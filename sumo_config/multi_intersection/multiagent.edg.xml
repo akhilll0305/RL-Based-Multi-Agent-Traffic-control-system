@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/edges_file.xsd">
+    
+    <!-- INTERSECTION 1 (Top-Left) connections -->
+    <!-- From external to intersection 1 -->
+    <edge id="north_to_i1" from="north_ext_1" to="intersection_1" numLanes="2" speed="13.89"/>
+    <edge id="west_to_i1" from="west_ext_1" to="intersection_1" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 1 to external -->
+    <edge id="i1_to_north" from="intersection_1" to="north_ext_1" numLanes="2" speed="13.89"/>
+    <edge id="i1_to_west" from="intersection_1" to="west_ext_1" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 1 to intersection 2 (east) -->
+    <edge id="i1_to_i2" from="intersection_1" to="intersection_2" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 1 to intersection 3 (south) -->
+    <edge id="i1_to_i3" from="intersection_1" to="intersection_3" numLanes="2" speed="13.89"/>
+    
+    
+    <!-- INTERSECTION 2 (Top-Right) connections -->
+    <!-- From external to intersection 2 -->
+    <edge id="north_to_i2" from="north_ext_2" to="intersection_2" numLanes="2" speed="13.89"/>
+    <edge id="east_to_i2" from="east_ext_1" to="intersection_2" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 2 to external -->
+    <edge id="i2_to_north" from="intersection_2" to="north_ext_2" numLanes="2" speed="13.89"/>
+    <edge id="i2_to_east" from="intersection_2" to="east_ext_1" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 2 to intersection 1 (west) -->
+    <edge id="i2_to_i1" from="intersection_2" to="intersection_1" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 2 to intersection 4 (south) -->
+    <edge id="i2_to_i4" from="intersection_2" to="intersection_4" numLanes="2" speed="13.89"/>
+    
+    
+    <!-- INTERSECTION 3 (Bottom-Left) connections -->
+    <!-- From external to intersection 3 -->
+    <edge id="south_to_i3" from="south_ext_1" to="intersection_3" numLanes="2" speed="13.89"/>
+    <edge id="west_to_i3" from="west_ext_2" to="intersection_3" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 3 to external -->
+    <edge id="i3_to_south" from="intersection_3" to="south_ext_1" numLanes="2" speed="13.89"/>
+    <edge id="i3_to_west" from="intersection_3" to="west_ext_2" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 3 to intersection 1 (north) -->
+    <edge id="i3_to_i1" from="intersection_3" to="intersection_1" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 3 to intersection 4 (east) -->
+    <edge id="i3_to_i4" from="intersection_3" to="intersection_4" numLanes="2" speed="13.89"/>
+    
+    
+    <!-- INTERSECTION 4 (Bottom-Right) connections -->
+    <!-- From external to intersection 4 -->
+    <edge id="south_to_i4" from="south_ext_2" to="intersection_4" numLanes="2" speed="13.89"/>
+    <edge id="east_to_i4" from="east_ext_2" to="intersection_4" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 4 to external -->
+    <edge id="i4_to_south" from="intersection_4" to="south_ext_2" numLanes="2" speed="13.89"/>
+    <edge id="i4_to_east" from="intersection_4" to="east_ext_2" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 4 to intersection 3 (west) -->
+    <edge id="i4_to_i3" from="intersection_4" to="intersection_3" numLanes="2" speed="13.89"/>
+    
+    <!-- From intersection 4 to intersection 2 (north) -->
+    <edge id="i4_to_i2" from="intersection_4" to="intersection_2" numLanes="2" speed="13.89"/>
+    
+</edges>

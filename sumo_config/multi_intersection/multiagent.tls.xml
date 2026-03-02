@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
+    
+    <!-- Traffic Light Logic - Simple 2-phase for all intersections -->
+    <!-- Phase 0: North-South Green, East-West Red -->
+    <!-- Phase 1: East-West Green, North-South Red -->
+    
+    <!-- TLS 1 (Top-Left Intersection) -->
+    <tlLogic id="tls_1" type="static" programID="0" offset="0">
+        <phase duration="60" state="GGrrGGrr"/>  <!-- NS green -->
+        <phase duration="60" state="rrGGrrGG"/>  <!-- EW green -->
+    </tlLogic>
+    
+    <!-- TLS 2 (Top-Right Intersection) -->
+    <tlLogic id="tls_2" type="static" programID="0" offset="0">
+        <phase duration="60" state="GGrrGGrr"/>  <!-- NS green -->
+        <phase duration="60" state="rrGGrrGG"/>  <!-- EW green -->
+    </tlLogic>
+    
+    <!-- TLS 3 (Bottom-Left Intersection) -->
+    <tlLogic id="tls_3" type="static" programID="0" offset="0">
+        <phase duration="60" state="GGrrGGrr"/>  <!-- NS green -->
+        <phase duration="60" state="rrGGrrGG"/>  <!-- EW green -->
+    </tlLogic>
+    
+    <!-- TLS 4 (Bottom-Right Intersection) -->
+    <tlLogic id="tls_4" type="static" programID="0" offset="0">
+        <phase duration="60" state="GGrrGGrr"/>  <!-- NS green -->
+        <phase duration="60" state="rrGGrrGG"/>  <!-- EW green -->
+    </tlLogic>
+    
+</additional>

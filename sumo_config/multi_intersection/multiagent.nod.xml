@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nodes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/nodes_file.xsd">
+    
+    <!-- External boundary nodes (traffic sources/sinks) -->
+    <!-- North boundary -->
+    <node id="north_ext_1" x="-250" y="750" type="priority"/>
+    <node id="north_ext_2" x="250" y="750" type="priority"/>
+    
+    <!-- South boundary -->
+    <node id="south_ext_1" x="-250" y="-750" type="priority"/>
+    <node id="south_ext_2" x="250" y="-750" type="priority"/>
+    
+    <!-- East boundary -->
+    <node id="east_ext_1" x="750" y="250" type="priority"/>
+    <node id="east_ext_2" x="750" y="-250" type="priority"/>
+    
+    <!-- West boundary -->
+    <node id="west_ext_1" x="-750" y="250" type="priority"/>
+    <node id="west_ext_2" x="-750" y="-250" type="priority"/>
+    
+    <!-- Intersection nodes (traffic light controlled) -->
+    <!-- Top row intersections -->
+    <node id="intersection_1" x="-250" y="250" type="traffic_light" tl="tls_1"/>
+    <node id="intersection_2" x="250" y="250" type="traffic_light" tl="tls_2"/>
+    
+    <!-- Bottom row intersections -->
+    <node id="intersection_3" x="-250" y="-250" type="traffic_light" tl="tls_3"/>
+    <node id="intersection_4" x="250" y="-250" type="traffic_light" tl="tls_4"/>
+    
+</nodes>

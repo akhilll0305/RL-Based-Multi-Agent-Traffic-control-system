@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+.uv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SUMO temporary files
+*.xml~
+*.log
+tripinfo*.xml
+summary*.xml
+
+# Large model files (optional - see notes below)
+# Uncomment these if models are too large for GitHub (>100MB)
+# models/*.pth
+# checkpoints/*.pth
+# experiments/**/*.pth
+
+# Keep model files if they're small (<100MB each)
+# GitHub allows files up to 100MB
+# Your PyTorch models are likely 10-50MB, so they're fine to commit
+
+# Training outputs (keep these - they're small CSV/PNG files)
+# results/
+# These should be committed to show your results
+
+# Generated SUMO files (can be regenerated)
+# sumo_files/*.net.xml
+# sumo_files/*.rou.xml
+# sumo_files/*.sumocfg
+# Uncomment above if you want to regenerate these
+# Keep them committed so others can run evaluation immediately

@@ -1,0 +1,45 @@
+{
+  "baseline_500ep_GPU_20260205_235614": {
+    "name": "baseline_500ep_GPU",
+    "timestamp": "20260205_235614",
+    "description": "First successful GPU training - 500 episodes, 61% improvement, final reward -6670",
+    "config": {
+      "episodes": 500,
+      "learning_rate": 0.001,
+      "gamma": 0.95,
+      "hidden_dim": 128,
+      "epsilon_decay": 0.995,
+      "epsilon_min": 0.01,
+      "batch_size": 64,
+      "buffer_capacity": 10000,
+      "target_update_freq": 10,
+      "state_dim": 6,
+      "reward_function": "default: -(queue + 0.5*waiting + 10*switching)"
+    },
+    "results": null,
+    "directory": "experiments\\baseline_500ep_GPU_20260205_235614"
+  },
+  "baseline_500ep_GPU_20260205_235635": {
+    "name": "baseline_500ep_GPU",
+    "timestamp": "20260205_235635",
+    "description": "First successful GPU training - 500 episodes, 61% improvement from -17308 to -6670 avg reward",
+    "config": {
+      "episodes": 500,
+      "learning_rate": 0.001,
+      "gamma": 0.95,
+      "hidden_dim": 128,
+      "epsilon_decay": 0.995,
+      "epsilon_min": 0.01,
+      "batch_size": 64,
+      "buffer_capacity": 10000,
+      "target_update_freq": 10,
+      "state_dim": 6,
+      "action_dim": 2,
+      "reward_function": "default: -(queue + 0.5*waiting + 10*switching)",
+      "training_time": "~75 minutes",
+      "device": "cuda (RTX 4060)"
+    },
+    "results": null,
+    "directory": "experiments\\baseline_500ep_GPU_20260205_235635"
+  }
+}
