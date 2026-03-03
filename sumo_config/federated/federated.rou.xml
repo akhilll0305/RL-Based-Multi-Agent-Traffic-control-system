@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+
+    <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5"
+           minGap="2.5" maxSpeed="50" guiShape="passenger"/>
+
+    <!-- ======================== NORTH-SOUTH ROUTES ======================== -->
+    <!-- Column 1: north_ext_1 -> i1 -> i3 -> south_ext_1 -->
+    <route id="ns_col1" edges="north_to_i1 i1_to_i3 i3_to_south"/>
+    <route id="sn_col1" edges="south_to_i3 i3_to_i1 i1_to_north"/>
+
+    <!-- Column 2: north_ext_2 -> i2 -> i4 -> south_ext_2 -->
+    <route id="ns_col2" edges="north_to_i2 i2_to_i4 i4_to_south"/>
+    <route id="sn_col2" edges="south_to_i4 i4_to_i2 i2_to_north"/>
+
+    <!-- Column 3: north_ext_3 -> i5 -> i7 -> south_ext_3 -->
+    <route id="ns_col3" edges="north_to_i5 i5_to_i7 i7_to_south"/>
+    <route id="sn_col3" edges="south_to_i7 i7_to_i5 i5_to_north"/>
+
+    <!-- Column 4: north_ext_4 -> i6 -> i8 -> south_ext_4 -->
+    <route id="ns_col4" edges="north_to_i6 i6_to_i8 i8_to_south"/>
+    <route id="sn_col4" edges="south_to_i8 i8_to_i6 i6_to_north"/>
+
+    <!-- ======================== EAST-WEST ROUTES ======================== -->
+    <!-- Row 1 (top): west -> i1 -> i2 -> i5 -> i6 -> east  (full corridor) -->
+    <route id="we_row1_full" edges="west_to_i1 i1_to_i2 i2_to_i5 i5_to_i6 i6_to_east"/>
+    <route id="ew_row1_full" edges="east_to_i6 i6_to_i5 i5_to_i2 i2_to_i1 i1_to_west"/>
+
+    <!-- Row 2 (bottom): west -> i3 -> i4 -> i7 -> i8 -> east -->
+    <route id="we_row2_full" edges="west_to_i3 i3_to_i4 i4_to_i7 i7_to_i8 i8_to_east"/>
+    <route id="ew_row2_full" edges="east_to_i8 i8_to_i7 i7_to_i4 i4_to_i3 i3_to_west"/>
+
+    <!-- Row 1 Zone A only: west -> i1 -> i2 -> north/south exit -->
+    <route id="we_row1_zoneA" edges="west_to_i1 i1_to_i2 i2_to_north"/>
+    <!-- Row 2 Zone B only: south -> i7 -> i8 -> east -->
+    <route id="sn_to_east" edges="south_to_i7 i7_to_i8 i8_to_east"/>
+
+    <!-- ======================== CROSS-ZONE ROUTES ======================== -->
+    <!-- Diagonal: northwest to southeast -->
+    <route id="nw_to_se" edges="north_to_i1 i1_to_i2 i2_to_i5 i5_to_i7 i7_to_south"/>
+    <!-- Diagonal: northeast to southwest -->
+    <route id="ne_to_sw" edges="north_to_i6 i6_to_i5 i5_to_i2 i2_to_i4 i4_to_south"/>
+    <!-- Zone A to Zone B via top bridge -->
+    <route id="zA_to_zB_top" edges="west_to_i1 i1_to_i2 i2_to_i5 i5_to_i6 i6_to_east"/>
+    <!-- Zone B to Zone A via bottom bridge -->
+    <route id="zB_to_zA_bot" edges="east_to_i8 i8_to_i7 i7_to_i4 i4_to_i3 i3_to_west"/>
+
+    <!-- ======================== LOCAL ROUTES (short trips) ======================== -->
+    <route id="n1_to_e_via_zoneB" edges="north_to_i1 i1_to_i2 i2_to_i5 i5_to_i6 i6_to_east"/>
+    <route id="s3_to_n3" edges="south_to_i7 i7_to_i5 i5_to_north"/>
+    <route id="w_to_s_col1" edges="west_to_i1 i1_to_i3 i3_to_south"/>
+    <route id="e_to_n_col4" edges="east_to_i6 i6_to_north"/>
+
+    <!-- ======================== TRAFFIC FLOWS ======================== -->
+    <!-- North-South flows (all 4 columns) -->
+    <flow id="f_ns1" type="car" route="ns_col1" begin="0" end="3600" probability="0.05"/>
+    <flow id="f_ns2" type="car" route="ns_col2" begin="0" end="3600" probability="0.05"/>
+    <flow id="f_ns3" type="car" route="ns_col3" begin="0" end="3600" probability="0.05"/>
+    <flow id="f_ns4" type="car" route="ns_col4" begin="0" end="3600" probability="0.05"/>
+    <flow id="f_sn1" type="car" route="sn_col1" begin="0" end="3600" probability="0.05"/>
+    <flow id="f_sn2" type="car" route="sn_col2" begin="0" end="3600" probability="0.05"/>
+    <flow id="f_sn3" type="car" route="sn_col3" begin="0" end="3600" probability="0.05"/>
+    <flow id="f_sn4" type="car" route="sn_col4" begin="0" end="3600" probability="0.05"/>
+
+    <!-- East-West full corridor flows -->
+    <flow id="f_we1" type="car" route="we_row1_full" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_we2" type="car" route="we_row2_full" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_ew1" type="car" route="ew_row1_full" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_ew2" type="car" route="ew_row2_full" begin="0" end="3600" probability="0.04"/>
+
+    <!-- Cross-zone flows (moderate) -->
+    <flow id="f_nw_se"  type="car" route="nw_to_se"  begin="0" end="3600" probability="0.03"/>
+    <flow id="f_ne_sw"  type="car" route="ne_to_sw"  begin="0" end="3600" probability="0.03"/>
+    <flow id="f_zA_zB"  type="car" route="zA_to_zB_top"  begin="0" end="3600" probability="0.03"/>
+    <flow id="f_zB_zA"  type="car" route="zB_to_zA_bot"  begin="0" end="3600" probability="0.03"/>
+
+    <!-- Local/short flows -->
+    <flow id="f_local1" type="car" route="s3_to_n3"    begin="0" end="3600" probability="0.03"/>
+    <flow id="f_local2" type="car" route="w_to_s_col1" begin="0" end="3600" probability="0.03"/>
+    <flow id="f_local3" type="car" route="sn_to_east"  begin="0" end="3600" probability="0.03"/>
+    <flow id="f_local4" type="car" route="e_to_n_col4" begin="0" end="3600" probability="0.03"/>
+
+</routes>
