@@ -1,8 +1,8 @@
-# 🚦 Multi-Agent DDQN Traffic Light Control System
+# 🚦 Federated Hierarchical Multi-Agent Traffic Light Control System
 
-**Advanced Deep Reinforcement Learning for Intelligent Traffic Management**
+**Advanced Deep Reinforcement Learning with Federated Learning for Intelligent Traffic Management**
 
-> A scalable multi-agent reinforcement learning system that demonstrates the power of transfer learning and cooperative coordination in urban traffic control. This project extends single-agent DDQN to multi-agent scenarios with both independent and cooperative modes.
+> A scalable multi-agent reinforcement learning system that uses Federated Hierarchical MARL to manage 8 intersections across 2 zones with supervisor agents. Extends from single-agent DDQN → multi-agent → cooperative → **federated hierarchical** with FedAvg weight aggregation.
 
 ---
 
@@ -11,6 +11,7 @@
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
+- [Federated Hierarchical System](#-federated-hierarchical-system-new)
 - [Performance Results](#performance-results)
 - [Installation](#installation)
 - [Usage](#usage)
@@ -29,7 +30,8 @@ This project implements a sophisticated multi-agent deep reinforcement learning 
 1. **Transfer Learning Success**: Single-agent knowledge transfers effectively to multi-agent scenarios
 2. **Multi-Agent Scalability**: System scales from 1 to 4 intersections with improved per-intersection performance
 3. **Cooperative Coordination**: Agents sharing neighbor information achieve perfect load balancing
-4. **Real-World Integration**: Full SUMO (Simulation of Urban MObility) integration with GPU acceleration
+4. **🆕 Federated Hierarchical Control**: 8 intersections in 2 zones with supervisor agents and FedAvg
+5. **Real-World Integration**: Full SUMO (Simulation of Urban MObility) integration with GPU acceleration
 
 ### Key Achievements
 
@@ -120,6 +122,93 @@ reward = -(queue_length + 0.5 * waiting_time + 10 * phase_switch_penalty)
 
 ![Architecture Diagram](readme_visuals/4_architecture_diagram.png)
 *Figure 4: Multi-agent system architecture showing agent-environment interaction and cooperative connections*
+
+---
+
+## 🆕 Federated Hierarchical System (NEW)
+
+### Overview
+
+The latest extension scales the system to **8 intersections** in a **4×2 grid**, organized into **2 zones** managed by **supervisor agents** that communicate via **Federated Averaging (FedAvg)**.
+
+### Network Topology (4×2 Grid)
+
+```
+       Zone A (Supervisor 1)           Zone B (Supervisor 2)
+      ┌───────────────────────┐       ┌───────────────────────┐
+      │  [TLS1] ──── [TLS2]──┼───────┼──[TLS5] ──── [TLS6]  │
+      │    |            |     │       │    |            |     │
+      │  [TLS3] ──── [TLS4]──┼───────┼──[TLS7] ──── [TLS8]  │
+      └───────────────────────┘       └───────────────────────┘
+                              ↑       ↑
+                         Inter-Zone Bridges
+                       (i2↔i5 and i4↔i7)
+```
+
+### Hierarchical Architecture
+
+| Level | Component | Input | Output | Count |
+|-------|-----------|-------|--------|-------|
+| **Local** | DDQN Agent | 8-dim state (queues, phase, zone_avg, cross_zone_pressure) | Keep/Switch phase | 8 agents |
+| **Zone** | Supervisor Agent | 24-dim state (own zone 12 + neighbor zone 12) | NS_priority / EW_priority / Balanced | 2 supervisors |
+| **Global** | FedAvg Coordinator | Agent weights | Averaged global model | 1 coordinator |
+
+### Federated Averaging (FedAvg)
+
+Based on McMahan et al. (2017), the system uses **two levels of weight aggregation**:
+
+1. **Intra-Zone FedAvg** (every 10 episodes, α=0.8):
+   - Average weights of 4 local agents within each zone
+   - Preserves zone-specific knowledge while sharing learned policies
+
+2. **Inter-Zone FedAvg** (every 25 episodes, α=0.5):
+   - Average weights across all 8 local agents (softer blend)
+   - Average supervisor weights for global coordination
+   - Creates a shared global model while allowing local adaptation
+
+### Hierarchical Reward Structure
+
+```
+Local reward = -queue_length - 0.5 × waiting_time - phase_switch_penalty
+Zone reward  = 0.7 × local_reward + 0.3 × zone_average_reward
+Final reward = zone_reward + supervisor_modifier
+```
+
+The supervisor dynamically adjusts local agent rewards:
+- **NS_priority**: Bonus for maintaining N-S green phases
+- **EW_priority**: Bonus for maintaining E-W green phases
+- **Balanced**: No directional bias
+
+### Usage
+
+```bash
+# Generate 8-intersection network
+python generate_sumo_federated.py
+
+# Train federated system (700 episodes)
+python main_federated.py --episodes 700
+
+# Train with SUMO visualization
+python main_federated.py --gui
+
+# Evaluate trained model
+python main_federated.py --evaluate --gui
+
+# Generate training plots
+python evaluate_federated.py
+```
+
+### New Files
+
+| File | Description |
+|------|-------------|
+| `generate_sumo_federated.py` | 4×2 grid SUMO network generator |
+| `sumo_environment_federated.py` | 8-intersection environment with zone-level observations |
+| `supervisor_agent.py` | Supervisor DDQN with coordination signals |
+| `federated_learning.py` | FedAvg implementation + FederatedCoordinator |
+| `train_federated.py` | Hierarchical training loop for all 10 agents |
+| `main_federated.py` | CLI entry point for training and evaluation |
+| `evaluate_federated.py` | Visualization and comparison plots |
 
 ---
 
@@ -286,44 +375,45 @@ RL-Project-main/
 ├── network.py                      # Neural network architecture
 ├── replay_buffer.py                # Experience replay mechanism
 ├── sumo_environment.py             # Single-agent SUMO wrapper
-├── sumo_environment_multiagent.py  # Multi-agent SUMO wrapper
+├── sumo_environment_multiagent.py  # Multi-agent SUMO wrapper (4 intersections)
+├── sumo_environment_federated.py   # Federated SUMO wrapper (8 intersections) 🆕
+│
+├── supervisor_agent.py             # Zone supervisor DDQN agent 🆕
+├── federated_learning.py           # FedAvg implementation 🆕
 │
 ├── main.py                         # Single-agent training/evaluation
 ├── main_multiagent.py              # Multi-agent training/evaluation
+├── main_federated.py               # Federated system entry point 🆕
+│
+├── train.py                        # Single-agent training loop
+├── train_federated.py              # Hierarchical training loop 🆕
+│
+├── evaluate.py                     # Single/multi-agent evaluation
+├── evaluate_federated.py           # Federated evaluation plots 🆕
 │
 ├── generate_sumo_files.py          # Single intersection generator
 ├── generate_sumo_multiagent.py     # 2×2 grid generator
+├── generate_sumo_federated.py      # 4×2 grid generator 🆕
 │
-├── create_comparison_plot.py       # Visualization tools
-├── create_final_comparison_plot.py # Comprehensive comparison
-├── create_cooperative_comparison.py # Cooperative analysis
+├── sumo_config/
+│   ├── single_intersection/        # 1-intersection SUMO files
+│   ├── multi_intersection/         # 2×2 grid SUMO files
+│   └── federated/                  # 4×2 grid SUMO files 🆕
 │
-├── checkpoints/                    # Single-agent models
-│   └── ddqn_episode_900.pth       # Best pre-trained model
+├── checkpoints/
+│   ├── single_agent/               # Single-agent models
+│   ├── multiagent/                 # Independent fine-tuned models
+│   ├── cooperative/                # Cooperative models
+│   └── federated/                  # Federated hierarchical models 🆕
 │
-├── checkpoints_multiagent/         # Independent fine-tuned models
-│   ├── tls_1_final.pth
-│   ├── tls_2_final.pth
-│   ├── tls_3_final.pth
-│   └── tls_4_final.pth
+├── results/
+│   ├── single_agent/               # Single-agent results
+│   ├── multiagent/                 # Multi-agent results
+│   ├── cooperative/                # Cooperative results
+│   └── federated/                  # Federated training results 🆕
 │
-├── checkpoints_cooperative/        # Cooperative models
-│   ├── tls_1_final.pth
-│   └── ... (700 episodes)
-│
-├── sumo_files/                     # Single intersection
-│   ├── intersection.net.xml
-│   └── routes.rou.xml
-│
-├── sumo_files_multiagent/          # 2×2 grid network
-│   ├── multiagent.net.xml
-│   └── multiagent.rou.xml
-│
-├── results/                        # Training histories
-├── results_multiagent/             # Multi-agent results
-├── results_cooperative/            # Cooperative results
-│
-├── FINAL_COMPARISON_REPORT.md      # Comprehensive analysis
+├── docs/                           # Reports and documentation
+├── scripts/                        # Utility scripts
 └── README.md                       # This file
 ```
 
@@ -460,6 +550,12 @@ Comprehensive comparison providing insights:
 
 ## 🎯 Future Work
 
+### ✅ Completed
+
+1. **Federated Hierarchical MARL** (8 intersections, 2 supervisors, FedAvg)
+2. **Hierarchical Control** (local agents + zone supervisors)
+3. **Communication Protocols** (supervisor coordination signals)
+
 ### Short-Term Enhancements
 
 1. **Stochastic Traffic Patterns**
@@ -467,15 +563,10 @@ Comprehensive comparison providing insights:
    - Variable flow rates
    - More realistic scenarios
 
-2. **Larger Networks**
-   - 3×3 grid (9 intersections)
+2. **Even Larger Networks**
    - 4×4 grid (16 intersections)
+   - Real city topology
    - Scalability testing
-
-3. **Advanced Cooperation**
-   - Communication protocols
-   - Shared reward structures
-   - Hierarchical control
 
 ### Long-Term Goals
 
@@ -524,5 +615,5 @@ For questions or collaboration opportunities, please reach out through the repos
 
 ---
 
-**Last Updated**: February 2026  
-**Status**: Completed and Presentation-Ready ✅
+**Last Updated**: March 2025  
+**Status**: Federated Hierarchical System Implemented ✅
