@@ -192,7 +192,7 @@ class SupervisorAgent:
         """Store supervisor experience in replay buffer"""
         combined_state = np.concatenate([own_state, neighbor_state])
         combined_next = np.concatenate([next_own_state, next_neighbor_state])
-        self.memory.push(combined_state, action, reward, combined_next, done)
+        self.memory.store(combined_state, action, reward, combined_next, done)
 
     def train(self):
         """Train supervisor DDQN"""
