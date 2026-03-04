@@ -30,7 +30,8 @@ def train_federated(num_episodes=700,
                     target_update_freq=10,
                     save_freq=20,
                     log_freq=10,
-                    use_gui=False):
+                    use_gui=False,
+                    finetune=False):
     """
     Train the full federated hierarchical system.
 
@@ -40,18 +41,24 @@ def train_federated(num_episodes=700,
         save_freq: Save checkpoints every N episodes
         log_freq: Print detailed log every N episodes
         use_gui: Launch SUMO GUI for visual debugging
+        finetune: If True, load cooperative 4-intersection weights + use lower lr/epsilon
 
     Returns:
         history: Dict with all training metrics
     """
     # ==================== Setup ====================
+    mode = "FINE-TUNING (from cooperative 4-intersection)" if finetune else "FROM SCRATCH"
     print("=" * 70)
     print("  FEDERATED HIERARCHICAL MULTI-AGENT TRAINING")
+    print(f"  Mode: {mode}")
     print("  8 Intersections | 2 Zones | 2 Supervisors | FedAvg")
     print("=" * 70)
 
-    os.makedirs('checkpoints/federated', exist_ok=True)
-    os.makedirs('results/federated', exist_ok=True)
+    # Output directories
+    checkpoint_dir = 'checkpoints/federated_finetuned' if finetune else 'checkpoints/federated'
+    results_dir = 'results/federated_finetuned' if finetune else 'results/federated'
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    os.makedirs(results_dir, exist_ok=True)
 
     # Initialize environment
     env = FederatedSumoEnvironment(use_gui=use_gui)
@@ -63,6 +70,22 @@ def train_federated(num_episodes=700,
     print(f"  Supervisor:  state_dim={zone_state_dim * 2}, action_dim=3")
     print()
 
+    # Hyperparameters (adjusted for fine-tuning)
+    if finetune:
+        local_lr = 0.0001       # Gentle learning rate
+        local_epsilon = 0.1     # Low exploration (pretrained knowledge)
+        local_eps_decay = 0.998 # Slow decay
+        sup_lr = 0.0003
+        sup_epsilon = 0.3
+        sup_eps_decay = 0.998
+    else:
+        local_lr = 0.001
+        local_epsilon = 1.0
+        local_eps_decay = 0.995
+        sup_lr = 0.0005
+        sup_epsilon = 1.0
+        sup_eps_decay = 0.997
+
     # Initialize 8 local DDQN agents
     local_agents = {}
     for tls_id in env.tls_ids:
@@ -70,14 +93,40 @@ def train_federated(num_episodes=700,
             state_dim=local_state_dim,
             action_dim=action_dim,
             hidden_dim=128,
-            learning_rate=0.001,
+            learning_rate=local_lr,
             gamma=0.95,
-            epsilon_start=1.0,
-            epsilon_decay=0.995,
+            epsilon_start=local_epsilon,
+            epsilon_decay=local_eps_decay,
             epsilon_min=0.01,
             batch_size=64,
             buffer_capacity=10000
         )
+
+    # Load pretrained cooperative weights if fine-tuning
+    if finetune:
+        cooperative_dir = 'checkpoints/cooperative'
+        # Map: TLS 1-4 get their own cooperative weights, TLS 5-8 get copies
+        weight_map = {
+            'tls_1': 'tls_1_final.pth',
+            'tls_2': 'tls_2_final.pth',
+            'tls_3': 'tls_3_final.pth',
+            'tls_4': 'tls_4_final.pth',
+            'tls_5': 'tls_1_final.pth',  # Zone B gets Zone A weights as starting point
+            'tls_6': 'tls_2_final.pth',
+            'tls_7': 'tls_3_final.pth',
+            'tls_8': 'tls_4_final.pth',
+        }
+        print("\n  Loading cooperative 4-intersection weights:")
+        for tls_id, ckpt_name in weight_map.items():
+            ckpt_path = os.path.join(cooperative_dir, ckpt_name)
+            if os.path.exists(ckpt_path):
+                local_agents[tls_id].load(ckpt_path)
+                src = ckpt_name.replace('_final.pth', '')
+                print(f"    ✓ {tls_id} ← {src} weights")
+            else:
+                print(f"    ⚠ {ckpt_path} not found, using random init")
+        print()
+
     print(f"  ✓ Initialized {len(local_agents)} local agents")
 
     # Initialize 2 supervisor agents
@@ -86,10 +135,10 @@ def train_federated(num_episodes=700,
         state_dim=zone_state_dim * 2,   # 24 (own zone + neighbor zone)
         action_dim=3,
         hidden_dim=256,
-        learning_rate=0.0005,
+        learning_rate=sup_lr,
         gamma=0.95,
-        epsilon_start=1.0,
-        epsilon_decay=0.997,
+        epsilon_start=sup_epsilon,
+        epsilon_decay=sup_eps_decay,
         epsilon_min=0.05,
         batch_size=32,
         buffer_capacity=5000,
@@ -101,10 +150,10 @@ def train_federated(num_episodes=700,
         state_dim=zone_state_dim * 2,
         action_dim=3,
         hidden_dim=256,
-        learning_rate=0.0005,
+        learning_rate=sup_lr,
         gamma=0.95,
-        epsilon_start=1.0,
-        epsilon_decay=0.997,
+        epsilon_start=sup_epsilon,
+        epsilon_decay=sup_eps_decay,
         epsilon_min=0.05,
         batch_size=32,
         buffer_capacity=5000,
@@ -313,12 +362,12 @@ def train_federated(num_episodes=700,
 
         # ==================== Checkpointing ====================
         if (episode + 1) % save_freq == 0:
-            _save_checkpoints(local_agents, supervisor_a, supervisor_b, episode + 1)
+            _save_checkpoints(local_agents, supervisor_a, supervisor_b, episode + 1, checkpoint_dir)
 
     # ==================== Final Save ====================
     env.close()
-    _save_checkpoints(local_agents, supervisor_a, supervisor_b, 'final')
-    _save_history(history)
+    _save_checkpoints(local_agents, supervisor_a, supervisor_b, 'final', checkpoint_dir)
+    _save_history(history, results_dir)
 
     print("\n" + "=" * 70)
     print("  TRAINING COMPLETE!")
@@ -329,19 +378,19 @@ def train_federated(num_episodes=700,
     return history
 
 
-def _save_checkpoints(local_agents, supervisor_a, supervisor_b, tag):
+def _save_checkpoints(local_agents, supervisor_a, supervisor_b, tag, checkpoint_dir='checkpoints/federated'):
     """Save all agent checkpoints"""
     for tls_id, agent in local_agents.items():
-        path = f'checkpoints/federated/{tls_id}_episode_{tag}.pth'
+        path = f'{checkpoint_dir}/{tls_id}_episode_{tag}.pth'
         agent.save(path)
 
-    supervisor_a.save(f'checkpoints/federated/supervisor_a_episode_{tag}.pth')
-    supervisor_b.save(f'checkpoints/federated/supervisor_b_episode_{tag}.pth')
+    supervisor_a.save(f'{checkpoint_dir}/supervisor_a_episode_{tag}.pth')
+    supervisor_b.save(f'{checkpoint_dir}/supervisor_b_episode_{tag}.pth')
 
 
-def _save_history(history):
+def _save_history(history, results_dir='results/federated'):
     """Save training history to CSV"""
-    csv_path = 'results/federated/training_history.csv'
+    csv_path = f'{results_dir}/training_history.csv'
 
     with open(csv_path, 'w', newline='') as f:
         writer = csv.writer(f)

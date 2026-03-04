@@ -3,6 +3,7 @@ Main Entry Point for Federated Hierarchical Multi-Agent Traffic Control
 
 Usage:
   python main_federated.py              # Train the system (700 episodes)
+  python main_federated.py --finetune    # Fine-tune from cooperative weights
   python main_federated.py --evaluate   # Evaluate trained model
   python main_federated.py --gui        # Train with SUMO GUI visualization
   python main_federated.py --episodes 500  # Custom episode count
@@ -150,6 +151,8 @@ def main():
                         help='Use SUMO GUI for visualization')
     parser.add_argument('--episodes', type=int, default=700,
                         help='Number of training episodes (default: 700)')
+    parser.add_argument('--finetune', action='store_true',
+                        help='Fine-tune from cooperative 4-intersection weights')
     parser.add_argument('--eval-episodes', type=int, default=5,
                         help='Number of evaluation episodes (default: 5)')
 
@@ -158,7 +161,7 @@ def main():
     if args.evaluate:
         evaluate_federated(use_gui=args.gui, num_episodes=args.eval_episodes)
     else:
-        train_federated(num_episodes=args.episodes, use_gui=args.gui)
+        train_federated(num_episodes=args.episodes, use_gui=args.gui, finetune=args.finetune)
 
 
 if __name__ == '__main__':
