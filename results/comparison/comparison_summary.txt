@@ -1,0 +1,22 @@
+FEDERATED TRAINING COMPARISON: From Scratch vs Fine-Tuned
+============================================================
+
+From Scratch: 700 episodes, ~10h 27min
+Fine-Tuned:   200 episodes, ~2h 58min (from cooperative weights)
+
+Metric                                   Scratch   Fine-Tuned
+------------------------------------------------------------
+Final Avg Queue (last 20 eps)               0.26         0.19
+Final Avg Wait Time (last 20)               0.05s         0.04s
+Final Avg Reward (last 20)               -3938.5      -3861.5
+Episodes to Queue < 1.0                       17           10
+Training Time                            10h 27m       2h 58m
+Intra-zone FedAvg                             70           20
+Inter-zone FedAvg                             28            8
+
+Training Speedup: 3.5x faster with fine-tuning
+
+Conclusion: Fine-tuning from cooperative 4-intersection weights
+provides a strong initialization, enabling the 8-intersection
+federated system to converge faster with comparable or better
+final performance.
