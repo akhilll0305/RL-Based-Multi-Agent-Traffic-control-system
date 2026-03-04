@@ -21,16 +21,20 @@ from supervisor_agent import SupervisorAgent
 from train_federated import train_federated
 
 
-def evaluate_federated(use_gui=True, num_episodes=5):
+def evaluate_federated(use_gui=True, num_episodes=5, checkpoint_dir='checkpoints/federated', results_dir='results/federated', label='From Scratch'):
     """
     Evaluate trained federated model.
 
     Args:
         use_gui: Whether to visualize in SUMO GUI
         num_episodes: Number of evaluation episodes
+        checkpoint_dir: Directory containing the trained checkpoints
+        results_dir: Directory to save evaluation results
+        label: Label for this model variant
     """
     print("=" * 70)
-    print("  EVALUATING FEDERATED HIERARCHICAL MODEL")
+    print(f"  EVALUATING FEDERATED MODEL: {label}")
+    print(f"  Checkpoints: {checkpoint_dir}")
     print("=" * 70)
 
     env = FederatedSumoEnvironment(use_gui=use_gui)
@@ -42,7 +46,7 @@ def evaluate_federated(use_gui=True, num_episodes=5):
     local_agents = {}
     for tls_id in env.tls_ids:
         agent = DDQNAgent(state_dim=local_state_dim, action_dim=action_dim)
-        checkpoint = f'checkpoints/federated/{tls_id}_episode_final.pth'
+        checkpoint = f'{checkpoint_dir}/{tls_id}_episode_final.pth'
         if os.path.exists(checkpoint):
             agent.load(checkpoint)
             print(f"  ✓ Loaded {tls_id}")
@@ -54,11 +58,11 @@ def evaluate_federated(use_gui=True, num_episodes=5):
     supervisor_a = SupervisorAgent('zone_a', state_dim=zone_state_dim * 2, action_dim=3)
     supervisor_b = SupervisorAgent('zone_b', state_dim=zone_state_dim * 2, action_dim=3)
 
-    if os.path.exists('checkpoints/federated/supervisor_a_episode_final.pth'):
-        supervisor_a.load('checkpoints/federated/supervisor_a_episode_final.pth')
+    if os.path.exists(f'{checkpoint_dir}/supervisor_a_episode_final.pth'):
+        supervisor_a.load(f'{checkpoint_dir}/supervisor_a_episode_final.pth')
         print("  ✓ Loaded Supervisor A")
-    if os.path.exists('checkpoints/federated/supervisor_b_episode_final.pth'):
-        supervisor_b.load('checkpoints/federated/supervisor_b_episode_final.pth')
+    if os.path.exists(f'{checkpoint_dir}/supervisor_b_episode_final.pth'):
+        supervisor_b.load(f'{checkpoint_dir}/supervisor_b_episode_final.pth')
         print("  ✓ Loaded Supervisor B")
 
     # Evaluate
@@ -133,12 +137,67 @@ def evaluate_federated(use_gui=True, num_episodes=5):
     print("=" * 70)
 
     # Save eval results
-    os.makedirs('results/federated', exist_ok=True)
-    with open('results/federated/evaluation_results.csv', 'w', newline='') as f:
+    os.makedirs(results_dir, exist_ok=True)
+    eval_path = f'{results_dir}/evaluation_results.csv'
+    with open(eval_path, 'w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=all_metrics[0].keys())
         writer.writeheader()
         writer.writerows(all_metrics)
-    print(f"  Results saved to results/federated/evaluation_results.csv")
+    print(f"  Results saved to {eval_path}")
+
+    return all_metrics
+
+
+def evaluate_both(use_gui=False, num_episodes=5):
+    """
+    Evaluate both from-scratch and fine-tuned models, then print comparison.
+    """
+    print("\n" + "#" * 70)
+    print("  EVALUATING BOTH MODELS FOR COMPARISON")
+    print("#" * 70 + "\n")
+
+    scratch_metrics = evaluate_federated(
+        use_gui=use_gui, num_episodes=num_episodes,
+        checkpoint_dir='checkpoints/federated',
+        results_dir='results/federated',
+        label='From Scratch (700 eps)'
+    )
+
+    finetune_metrics = evaluate_federated(
+        use_gui=use_gui, num_episodes=num_episodes,
+        checkpoint_dir='checkpoints/federated_finetuned',
+        results_dir='results/federated_finetuned',
+        label='Fine-Tuned (200 eps)'
+    )
+
+    # Side-by-side comparison
+    print("\n" + "=" * 70)
+    print("  HEAD-TO-HEAD COMPARISON")
+    print("=" * 70)
+    print(f"  {'Metric':<25} {'From Scratch':>15} {'Fine-Tuned':>15}")
+    print(f"  {'-' * 55}")
+
+    s_reward = np.mean([m['total_reward'] for m in scratch_metrics])
+    f_reward = np.mean([m['total_reward'] for m in finetune_metrics])
+    print(f"  {'Avg Reward':<25} {s_reward:>15.1f} {f_reward:>15.1f}")
+
+    s_wait = np.mean([m['avg_waiting_time'] for m in scratch_metrics])
+    f_wait = np.mean([m['avg_waiting_time'] for m in finetune_metrics])
+    print(f"  {'Avg Wait Time (s)':<25} {s_wait:>15.2f} {f_wait:>15.2f}")
+
+    s_za = np.mean([m['zone_a_queue'] for m in scratch_metrics])
+    f_za = np.mean([m['zone_a_queue'] for m in finetune_metrics])
+    print(f"  {'Avg Zone A Queue':<25} {s_za:>15.1f} {f_za:>15.1f}")
+
+    s_zb = np.mean([m['zone_b_queue'] for m in scratch_metrics])
+    f_zb = np.mean([m['zone_b_queue'] for m in finetune_metrics])
+    print(f"  {'Avg Zone B Queue':<25} {s_zb:>15.1f} {f_zb:>15.1f}")
+
+    s_veh = np.mean([m['total_vehicles'] for m in scratch_metrics])
+    f_veh = np.mean([m['total_vehicles'] for m in finetune_metrics])
+    print(f"  {'Avg Vehicles Served':<25} {s_veh:>15.0f} {f_veh:>15.0f}")
+
+    print("=" * 70)
 
 
 def main():
@@ -159,7 +218,15 @@ def main():
     args = parser.parse_args()
 
     if args.evaluate:
-        evaluate_federated(use_gui=args.gui, num_episodes=args.eval_episodes)
+        if args.finetune:
+            evaluate_federated(
+                use_gui=args.gui, num_episodes=args.eval_episodes,
+                checkpoint_dir='checkpoints/federated_finetuned',
+                results_dir='results/federated_finetuned',
+                label='Fine-Tuned (200 eps)'
+            )
+        else:
+            evaluate_both(use_gui=args.gui, num_episodes=args.eval_episodes)
     else:
         train_federated(num_episodes=args.episodes, use_gui=args.gui, finetune=args.finetune)
 
