@@ -177,7 +177,7 @@ def main():
     summary_path = os.path.join(RESULTS_DIR, "scenario_comparison.csv")
     
     if not os.path.exists(summary_path):
-        print(f"Error: {summary_path} not found. Run main_security.py first.")
+        print(f"Error: {summary_path} not found. Run scripts/phase3_security/run_scenarios.py first.")
         return
         
     summary_df = pd.read_csv(summary_path)

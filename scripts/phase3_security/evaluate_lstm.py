@@ -2,10 +2,10 @@
 Evaluate trained TrafficLSTM prediction quality on validation split.
 
 Outputs:
-- results_security/lstm_eval_summary.csv
-- results_security/lstm_eval_per_intersection_lane.csv
-- analysis_security/lstm_eval/predicted_vs_actual_sample_episode.png
-- analysis_security/lstm_eval/mae_per_intersection.png
+- outputs/results/security/lstm_eval_summary.csv
+- outputs/results/security/lstm_eval_per_intersection_lane.csv
+- outputs/analysis/security/lstm_eval/predicted_vs_actual_sample_episode.png
+- outputs/analysis/security/lstm_eval/mae_per_intersection.png
 """
 
 from __future__ import annotations

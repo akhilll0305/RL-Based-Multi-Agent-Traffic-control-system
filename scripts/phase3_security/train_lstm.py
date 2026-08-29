@@ -2,14 +2,14 @@
 Train TrafficLSTM on clean baseline queue data.
 
 Inputs:
-- data_security/train_states.npy
-- data_security/train_metadata.npz
-- data_security/val_states.npy
-- data_security/val_metadata.npz
+- data/security/train_states.npy
+- data/security/train_metadata.npz
+- data/security/val_states.npy
+- data/security/val_metadata.npz
 
 Outputs:
-- checkpoints_security/lstm_predictor.pth
-- results_security/lstm_training_history.csv
+- outputs/checkpoints/security/lstm_predictor.pth
+- outputs/results/security/lstm_training_history.csv
 
 Training target:
 Given window of N timesteps (default 20), predict next-step 4-lane queue values.

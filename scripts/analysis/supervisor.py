@@ -7,7 +7,7 @@ Generates plots comparing:
   - Per-intersection performance breakdown
   - Episode-by-episode evaluation consistency
 
-Output folder: analysis_supervisor/
+Output folder: outputs/analysis/supervisor/
 """
 
 # --- repo bootstrap: make `traffic_rl` importable and anchor the CWD at the repo root ---

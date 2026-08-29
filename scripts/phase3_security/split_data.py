@@ -2,14 +2,14 @@
 Split baseline queue dataset into train/validation sets by episode (no leakage).
 
 Input files:
-- data_security/baseline_states.npy
-- data_security/baseline_metadata.npz
+- data/security/baseline_states.npy
+- data/security/baseline_metadata.npz
 
 Output files:
-- data_security/train_states.npy
-- data_security/val_states.npy
-- data_security/train_metadata.npz
-- data_security/val_metadata.npz
+- data/security/train_states.npy
+- data/security/val_states.npy
+- data/security/train_metadata.npz
+- data/security/val_metadata.npz
 """
 
 # --- repo bootstrap: make `traffic_rl` importable and anchor the CWD at the repo root ---

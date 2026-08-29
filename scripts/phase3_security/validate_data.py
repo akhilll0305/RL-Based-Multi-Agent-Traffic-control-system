@@ -10,10 +10,10 @@ Checks performed:
 6) Quick visualization outputs
 
 Outputs:
-- data_security/baseline_validation_summary.csv
-- data_security/validation/queue_distributions.png
-- data_security/validation/sample_episode_totals.png
-- data_security/validation/sample_tls_lane_trends.png
+- data/security/baseline_validation_summary.csv
+- data/security/validation/queue_distributions.png
+- data/security/validation/sample_episode_totals.png
+- data/security/validation/sample_tls_lane_trends.png
 """
 
 # --- repo bootstrap: make `traffic_rl` importable and anchor the CWD at the repo root ---

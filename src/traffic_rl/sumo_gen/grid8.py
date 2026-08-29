@@ -251,9 +251,9 @@ def build_network():
     print("\nBuilding SUMO network with netconvert...")
     cmd = [
         'netconvert',
-        '--node-files=sumo_files_8intersection/network.nod.xml',
-        '--edge-files=sumo_files_8intersection/network.edg.xml',
-        '--output-file=sumo_files_8intersection/network.net.xml',
+        '--node-files=sumo_files/grid8/network.nod.xml',
+        '--edge-files=sumo_files/grid8/network.edg.xml',
+        '--output-file=sumo_files/grid8/network.net.xml',
         '--no-turnarounds=true'
     ]
     try:
@@ -293,7 +293,7 @@ def generate_all():
     print("     |         |           |         |")
     print("  [TLS_3]---[TLS_4] <-> [TLS_7]---[TLS_8]")
     print("   Group A (left)       Group B (right)")
-    print("\nFiles: sumo_files_8intersection/")
+    print("\nFiles: sumo_files/grid8/")
     print("=" * 70)
 
 

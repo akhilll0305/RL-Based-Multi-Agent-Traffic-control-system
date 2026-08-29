@@ -220,7 +220,7 @@ python scripts/phase0_single/run.py --mode evaluate
 python scripts/phase1_grid4/run.py --mode train --cooperative --episodes 700 --learning-rate 0.0005 --epsilon 0.9
 
 # Evaluate
-python scripts/phase1_grid4/run.py --mode evaluate --load-final
+python scripts/phase1_grid4/run.py --mode evaluate --load-finetuned
 ```
 
 ### Phase 2: Hierarchical Supervisors (8-intersection)

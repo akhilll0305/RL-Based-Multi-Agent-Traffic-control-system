@@ -2,7 +2,7 @@
 Global Supervisor System — Visualization & Validation
 ===================================================
 Generates plots and validation specifically for the Global Supervisor (Step 2)
-Output folder: analysis_global_supervisor/
+Output folder: outputs/analysis/global_supervisor/
 """
 
 # --- repo bootstrap: make `traffic_rl` importable and anchor the CWD at the repo root ---

@@ -9,8 +9,8 @@ Goal:
 - Replace attacked value with LSTM prediction
 
 Outputs:
-- results_security/lstm_attack_sanity.csv
-- analysis_security/lstm_eval/attack_sanity_case.png
+- outputs/results/security/lstm_attack_sanity.csv
+- outputs/analysis/security/lstm_eval/attack_sanity_case.png
 """
 
 from __future__ import annotations

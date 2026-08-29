@@ -373,7 +373,7 @@ if __name__ == '__main__':
     parser.add_argument('--pretrained-model', type=str, default='outputs/checkpoints/single/ddqn_episode_900.pth',
                        help='Path to pretrained single-agent model')
     parser.add_argument('--load-finetuned', action='store_true',
-                       help='Load fine-tuned models from checkpoints_multiagent/ (ignores --pretrained-model)')
+                       help='Load fine-tuned models from outputs/checkpoints/grid4/ (ignores --pretrained-model)')
     parser.add_argument('--resume-from', type=int, default=0,
                        help='Resume training from episode checkpoint (e.g., 380)')
     parser.add_argument('--test-episodes', type=int, default=10,

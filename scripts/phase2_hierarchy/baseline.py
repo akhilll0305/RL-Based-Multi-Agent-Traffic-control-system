@@ -3,7 +3,7 @@
 Stage 1: Two groups of 4 agents, cooperative within groups, no cross-group info.
 
 Fine-tunes from existing 700-episode cooperative checkpoints.
-Group A (tls_1-4) loads from checkpoints_cooperative/tls_{1-4}_final.pth
+Group A (tls_1-4) loads from outputs/checkpoints/cooperative/tls_{1-4}_final.pth
 Group B (tls_5-8) loads from same checkpoints (mirror: tls_1→5, 2→6, 3→7, 4→8)
 """
 

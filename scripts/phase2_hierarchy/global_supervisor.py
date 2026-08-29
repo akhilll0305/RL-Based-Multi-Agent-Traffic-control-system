@@ -16,8 +16,8 @@ Training flow per step:
   8. NEW: Store (28-dim) + train supervisors (group average reward)
 
 Usage:
-  python main_global_supervisor.py --mode train --episodes 900 --from-scratch --epsilon 0.9
-  python main_global_supervisor.py --mode evaluate --load-final
+  python scripts/phase2_hierarchy/global_supervisor.py --mode train --episodes 900 --from-scratch --epsilon 0.9
+  python scripts/phase2_hierarchy/global_supervisor.py --mode evaluate --load-final
 """
 
 # --- repo bootstrap: make `traffic_rl` importable and anchor the CWD at the repo root ---

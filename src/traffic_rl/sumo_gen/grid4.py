@@ -259,9 +259,9 @@ def build_network():
     print("\nBuilding SUMO network...")
     cmd = [
         'netconvert',
-        '--node-files=sumo_files_multiagent/multiagent.nod.xml',
-        '--edge-files=sumo_files_multiagent/multiagent.edg.xml',
-        '--output-file=sumo_files_multiagent/multiagent.net.xml',
+        '--node-files=sumo_files/grid4/multiagent.nod.xml',
+        '--edge-files=sumo_files/grid4/multiagent.edg.xml',
+        '--output-file=sumo_files/grid4/multiagent.net.xml',
         '--no-turnarounds=true'
     ]
     
@@ -303,7 +303,7 @@ def generate_all():
     print("  [Int 1] ←→ [Int 2]")
     print("     ↕         ↕")
     print("  [Int 3] ←→ [Int 4]")
-    print("\nFiles created in: sumo_files_multiagent/")
+    print("\nFiles created in: sumo_files/grid4/")
     print("  - multiagent.net.xml (network)")
     print("  - multiagent.rou.xml (routes)")
     print("  - multiagent.tls.xml (traffic lights)")

@@ -2,19 +2,19 @@
 Collect clean baseline queue-state sequences for Security Phase LSTM training.
 
 This script:
-1) Loads frozen trained Local-Supervisor system from checkpoints_supervisor/
+1) Loads frozen trained Local-Supervisor system from outputs/checkpoints/supervisor/
 2) Runs evaluation episodes with greedy policy (epsilon=0)
 3) Records raw local queue values only (indices 0-3 of 6-dim state)
-4) Saves dataset and episode-boundary metadata to data_security/
+4) Saves dataset and episode-boundary metadata to data/security/
 
 Output files:
-- data_security/baseline_states.npy        shape: (total_steps, 8, 4)
-- data_security/baseline_metadata.npz      episode lengths and start indices
+- data/security/baseline_states.npy        shape: (total_steps, 8, 4)
+- data/security/baseline_metadata.npz      episode lengths and start indices
 
 Usage examples:
-  python collect_baseline_data.py
-  python collect_baseline_data.py --episodes 100 --num-seconds 1800
-  python collect_baseline_data.py --episodes 100 --gui
+  python scripts/phase3_security/collect_data.py
+  python scripts/phase3_security/collect_data.py --episodes 100 --num-seconds 1800
+  python scripts/phase3_security/collect_data.py --episodes 100 --gui
 """
 
 # --- repo bootstrap: make `traffic_rl` importable and anchor the CWD at the repo root ---
@@ -69,7 +69,7 @@ def ensure_checkpoints_exist(tls_ids: List[str]) -> None:
         raise FileNotFoundError(
             "Missing required checkpoints for baseline collection:\n"
             f"{formatted}\n"
-            "Please ensure Phase 2 final checkpoints exist in checkpoints_supervisor/."
+            "Please ensure Phase 2 final checkpoints exist in outputs/checkpoints/supervisor/."
         )
 
 
@@ -220,7 +220,7 @@ def save_dataset(
     episode_start_indices: np.ndarray,
     tls_ids: List[str],
 ) -> None:
-    """Persist baseline data and metadata to data_security/."""
+    """Persist baseline data and metadata to data/security/."""
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     states_path = os.path.join(OUTPUT_DIR, "baseline_states.npy")

@@ -346,7 +346,7 @@ def main(args):
     save_results(results, eval_env, num_episodes=args.episodes)
     plot_comparison(results, eval_env)
 
-    print("\n✅ All done! Files saved in results_8intersection/")
+    print("\n✅ All done! Files saved in outputs/results/grid8/")
 
 
 # ────────────────────────────────────────────────────────────────────

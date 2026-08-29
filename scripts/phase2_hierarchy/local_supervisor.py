@@ -15,9 +15,9 @@ Training flow per step:
   7. Store + train supervisors (group average reward)
 
 Usage:
-  python main_supervisor.py --mode train --episodes 500
-  python main_supervisor.py --mode evaluate --load-final
-  python main_supervisor.py --mode train --episodes 300 --resume-from 200
+  python scripts/phase2_hierarchy/local_supervisor.py --mode train --episodes 500
+  python scripts/phase2_hierarchy/local_supervisor.py --mode evaluate --load-final
+  python scripts/phase2_hierarchy/local_supervisor.py --mode train --episodes 300 --resume-from 200
 """
 
 # --- repo bootstrap: make `traffic_rl` importable and anchor the CWD at the repo root ---

@@ -22,7 +22,7 @@ def generate_nodes():
     with open('sumo_files/single/intersection.nod.xml', 'w') as f:
         f.write(nodes_xml)
     
-    print("Nodes file created: sumo_files/intersection.nod.xml")
+    print("Nodes file created: sumo_files/single/intersection.nod.xml")
 
 
 def generate_edges():
@@ -45,7 +45,7 @@ def generate_edges():
     with open('sumo_files/single/intersection.edg.xml', 'w') as f:
         f.write(edges_xml)
     
-    print("Edges file created: sumo_files/intersection.edg.xml")
+    print("Edges file created: sumo_files/single/intersection.edg.xml")
 
 
 def generate_intersection_network():
@@ -60,12 +60,12 @@ def generate_intersection_network():
     try:
         subprocess.run([
             'netconvert',
-            '--node-files=sumo_files/intersection.nod.xml',
-            '--edge-files=sumo_files/intersection.edg.xml',
-            '--output-file=sumo_files/intersection.net.xml',
+            '--node-files=sumo_files/single/intersection.nod.xml',
+            '--edge-files=sumo_files/single/intersection.edg.xml',
+            '--output-file=sumo_files/single/intersection.net.xml',
             '--tls.guess-signals', 'true'
         ], check=True, capture_output=True, text=True)
-        print("Network file created: sumo_files/intersection.net.xml")
+        print("Network file created: sumo_files/single/intersection.net.xml")
     except subprocess.CalledProcessError as e:
         print(f"Error running netconvert: {e}")
         print(f"stderr: {e.stderr}")
@@ -95,7 +95,7 @@ def generate_routes():
     with open('sumo_files/single/routes.rou.xml', 'w') as f:
         f.write(routes_xml)
     
-    print("Route file created: sumo_files/routes.rou.xml")
+    print("Route file created: sumo_files/single/routes.rou.xml")
 
 
 def generate_sumocfg():
@@ -130,7 +130,7 @@ def generate_sumocfg():
     with open('sumo_files/single/simulation.sumocfg', 'w') as f:
         f.write(sumocfg)
     
-    print("Configuration file created: sumo_files/simulation.sumocfg")
+    print("Configuration file created: sumo_files/single/simulation.sumocfg")
 
 
 def generate_all_sumo_files():
