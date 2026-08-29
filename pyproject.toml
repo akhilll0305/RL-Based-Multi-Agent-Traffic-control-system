@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "traffic-rl"
+version = "1.0.0"
+description = "Hierarchical multi-agent DDQN traffic light control with LSTM-based attack defence"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+dependencies = [
+    "torch",
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "tqdm",
+    "traci",
+    "sumolib",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"

@@ -1,0 +1,2 @@
+episode_idx,tls_id,lane,window_size,z_threshold,z_score,triggered,clean_prev_value,clean_next_value,attacked_next_value,lstm_predicted_value,corrected_next_value,abs_error_attack_vs_clean,abs_error_corrected_vs_clean
+9,tls_1,west,20,3.0,19.402613,True,4.0,1.0,18.0,0.37891721725463867,0.37891721725463867,17.0,0.6210827827453613

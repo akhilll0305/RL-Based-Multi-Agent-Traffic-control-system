@@ -1,4 +1,4 @@
-# Python
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
@@ -8,50 +8,44 @@ __pycache__/
 dist/
 build/
 
-# Virtual Environment
+# --- Virtual environments ---
 .venv/
 venv/
 ENV/
 env/
 .uv/
 
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IDE
+# --- Editors / OS ---
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
+.ipynb_checkpoints
 
-# SUMO temporary files
+# --- SUMO runtime artefacts ---
 *.xml~
 *.log
 tripinfo*.xml
 summary*.xml
 
-# Large model files (optional - see notes below)
-# Uncomment these if models are too large for GitHub (>100MB)
-# models/*.pth
-# checkpoints/*.pth
-# experiments/**/*.pth
+# --- Training checkpoints -------------------------------------------------
+# Per-episode snapshots are regenerable and run to ~370 MB, so they stay local.
+# The final trained models are committed so evaluation works after a clone.
+outputs/checkpoints/**/*.pth
+!outputs/checkpoints/**/*_final.pth
+!outputs/checkpoints/security/lstm_predictor.pth
+!outputs/checkpoints/supervisor/test_*.pth
+# these two snapshots are loaded by name from the phase 0/1 scripts
+!outputs/checkpoints/single/ddqn_episode_400.pth
+!outputs/checkpoints/single/ddqn_episode_900.pth
 
-# Keep model files if they're small (<100MB each)
-# GitHub allows files up to 100MB
-# Your PyTorch models are likely 10-50MB, so they're fine to commit
+# --- Generated training data (regenerate with phase3_security/collect_data.py) ---
+data/
 
-# Training outputs (keep these - they're small CSV/PNG files)
-# results/
-# These should be committed to show your results
-
-# Generated SUMO files (can be regenerated)
-# sumo_files/*.net.xml
-# sumo_files/*.rou.xml
-# sumo_files/*.sumocfg
-# Uncomment above if you want to regenerate these
-# Keep them committed so others can run evaluation immediately
+# --- Personal working notes ---
+bugs.md
+claude.md
+security-plan.md

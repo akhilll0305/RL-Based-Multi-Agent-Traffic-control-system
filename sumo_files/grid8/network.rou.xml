@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+
+    <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5"
+           minGap="2.5" maxSpeed="50" guiShape="passenger"/>
+
+    <!-- ====== NORTH-SOUTH through routes (vertical) ====== -->
+    <route id="n1_s1" edges="north_to_i1 i1_to_i3 i3_to_south"/>
+    <route id="n2_s2" edges="north_to_i2 i2_to_i4 i4_to_south"/>
+    <route id="n3_s3" edges="north_to_i5 i5_to_i7 i7_to_south"/>
+    <route id="n4_s4" edges="north_to_i6 i6_to_i8 i8_to_south"/>
+
+    <route id="s1_n1" edges="south_to_i3 i3_to_i1 i1_to_north"/>
+    <route id="s2_n2" edges="south_to_i4 i4_to_i2 i2_to_north"/>
+    <route id="s3_n3" edges="south_to_i7 i7_to_i5 i5_to_north"/>
+    <route id="s4_n4" edges="south_to_i8 i8_to_i6 i6_to_north"/>
+
+    <!-- ====== WEST-EAST through routes (full horizontal) ====== -->
+    <route id="w1_e1" edges="west_to_i1 i1_to_i2 i2_to_i5 i5_to_i6 i6_to_east"/>
+    <route id="w2_e2" edges="west_to_i3 i3_to_i4 i4_to_i7 i7_to_i8 i8_to_east"/>
+
+    <route id="e1_w1" edges="east_to_i6 i6_to_i5 i5_to_i2 i2_to_i1 i1_to_west"/>
+    <route id="e2_w2" edges="east_to_i8 i8_to_i7 i7_to_i4 i4_to_i3 i3_to_west"/>
+
+    <!-- ====== CROSS-GROUP routes (diagonal / turning) ====== -->
+    <route id="n1_e1" edges="north_to_i1 i1_to_i2 i2_to_i5 i5_to_i6 i6_to_east"/>
+    <route id="n2_s3" edges="north_to_i2 i2_to_i5 i5_to_i7 i7_to_south"/>
+    <route id="w1_s2" edges="west_to_i1 i1_to_i3 i3_to_i4 i4_to_south"/>
+    <route id="e1_n3" edges="east_to_i6 i6_to_i5 i5_to_north"/>
+    <route id="s4_w2" edges="south_to_i8 i8_to_i7 i7_to_i4 i4_to_i3 i3_to_west"/>
+    <route id="s1_e2" edges="south_to_i3 i3_to_i4 i4_to_i7 i7_to_i8 i8_to_east"/>
+
+    <!-- ====== LOCAL routes (within groups) ====== -->
+    <!-- Group A local -->
+    <route id="n1_w1" edges="north_to_i1 i1_to_west"/>
+    <route id="w1_s1" edges="west_to_i1 i1_to_i3 i3_to_south"/>
+    <route id="n2_s1_cross" edges="north_to_i2 i2_to_i4 i4_to_i3 i3_to_south"/>
+
+    <!-- Group B local -->
+    <route id="n4_e1" edges="north_to_i6 i6_to_east"/>
+    <route id="e2_s4" edges="east_to_i8 i8_to_south"/>
+    <route id="n3_e1_cross" edges="north_to_i5 i5_to_i6 i6_to_east"/>
+
+    <!-- ====== Traffic flows ====== -->
+    <!-- North-South flows (balanced per column) -->
+    <flow id="f_n1_s1" type="car" route="n1_s1" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_n2_s2" type="car" route="n2_s2" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_n3_s3" type="car" route="n3_s3" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_n4_s4" type="car" route="n4_s4" begin="0" end="3600" probability="0.04"/>
+
+    <flow id="f_s1_n1" type="car" route="s1_n1" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_s2_n2" type="car" route="s2_n2" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_s3_n3" type="car" route="s3_n3" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_s4_n4" type="car" route="s4_n4" begin="0" end="3600" probability="0.04"/>
+
+    <!-- West-East flows (full through-traffic) -->
+    <flow id="f_w1_e1" type="car" route="w1_e1" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_w2_e2" type="car" route="w2_e2" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_e1_w1" type="car" route="e1_w1" begin="0" end="3600" probability="0.04"/>
+    <flow id="f_e2_w2" type="car" route="e2_w2" begin="0" end="3600" probability="0.04"/>
+
+    <!-- Cross-group flows (moderate) -->
+    <flow id="f_n1_e1" type="car" route="n1_e1" begin="0" end="3600" probability="0.02"/>
+    <flow id="f_n2_s3" type="car" route="n2_s3" begin="0" end="3600" probability="0.02"/>
+    <flow id="f_w1_s2" type="car" route="w1_s2" begin="0" end="3600" probability="0.02"/>
+    <flow id="f_e1_n3" type="car" route="e1_n3" begin="0" end="3600" probability="0.02"/>
+    <flow id="f_s4_w2" type="car" route="s4_w2" begin="0" end="3600" probability="0.02"/>
+    <flow id="f_s1_e2" type="car" route="s1_e2" begin="0" end="3600" probability="0.02"/>
+
+    <!-- Local flows -->
+    <flow id="f_n1_w1" type="car" route="n1_w1" begin="0" end="3600" probability="0.02"/>
+    <flow id="f_w1_s1" type="car" route="w1_s1" begin="0" end="3600" probability="0.02"/>
+    <flow id="f_n4_e1" type="car" route="n4_e1" begin="0" end="3600" probability="0.02"/>
+    <flow id="f_e2_s4" type="car" route="e2_s4" begin="0" end="3600" probability="0.02"/>
+    <flow id="f_n2_s1_cross" type="car" route="n2_s1_cross" begin="0" end="3600" probability="0.02"/>
+    <flow id="f_n3_e1_cross" type="car" route="n3_e1_cross" begin="0" end="3600" probability="0.02"/>
+
+</routes>

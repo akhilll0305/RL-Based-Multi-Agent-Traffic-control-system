@@ -1,0 +1,2 @@
+global_mae,global_mse,global_p95_abs_error,sample_tls,sample_episode,actual_jump_p95,pred_jump_p95,actual_jump_max,pred_jump_max
+0.13341392576694489,0.07926220446825027,0.8539288640022278,tls_1,0,1.0,0.3397168219089508,3.0,1.0715196132659912

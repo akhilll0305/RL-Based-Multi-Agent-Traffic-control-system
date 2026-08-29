@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/edges_file.xsd">
+
+    <!-- ========== INTERSECTION 1 (Top-Left, Group A) ========== -->
+    <edge id="north_to_i1" from="north_ext_1" to="intersection_1" numLanes="2" speed="13.89"/>
+    <edge id="i1_to_north" from="intersection_1" to="north_ext_1" numLanes="2" speed="13.89"/>
+    <edge id="west_to_i1"  from="west_ext_1"  to="intersection_1" numLanes="2" speed="13.89"/>
+    <edge id="i1_to_west"  from="intersection_1" to="west_ext_1"  numLanes="2" speed="13.89"/>
+    <edge id="i1_to_i2"    from="intersection_1" to="intersection_2" numLanes="2" speed="13.89"/>
+    <edge id="i1_to_i3"    from="intersection_1" to="intersection_3" numLanes="2" speed="13.89"/>
+
+    <!-- ========== INTERSECTION 2 (Top-Center-Left, Group A) ========== -->
+    <edge id="north_to_i2" from="north_ext_2" to="intersection_2" numLanes="2" speed="13.89"/>
+    <edge id="i2_to_north" from="intersection_2" to="north_ext_2" numLanes="2" speed="13.89"/>
+    <edge id="i2_to_i1"    from="intersection_2" to="intersection_1" numLanes="2" speed="13.89"/>
+    <edge id="i2_to_i4"    from="intersection_2" to="intersection_4" numLanes="2" speed="13.89"/>
+    <edge id="i2_to_i5"    from="intersection_2" to="intersection_5" numLanes="2" speed="13.89"/>
+
+    <!-- ========== INTERSECTION 3 (Bottom-Left, Group A) ========== -->
+    <edge id="south_to_i3" from="south_ext_1" to="intersection_3" numLanes="2" speed="13.89"/>
+    <edge id="i3_to_south" from="intersection_3" to="south_ext_1" numLanes="2" speed="13.89"/>
+    <edge id="west_to_i3"  from="west_ext_2"  to="intersection_3" numLanes="2" speed="13.89"/>
+    <edge id="i3_to_west"  from="intersection_3" to="west_ext_2"  numLanes="2" speed="13.89"/>
+    <edge id="i3_to_i1"    from="intersection_3" to="intersection_1" numLanes="2" speed="13.89"/>
+    <edge id="i3_to_i4"    from="intersection_3" to="intersection_4" numLanes="2" speed="13.89"/>
+
+    <!-- ========== INTERSECTION 4 (Bottom-Center-Left, Group A) ========== -->
+    <edge id="south_to_i4" from="south_ext_2" to="intersection_4" numLanes="2" speed="13.89"/>
+    <edge id="i4_to_south" from="intersection_4" to="south_ext_2" numLanes="2" speed="13.89"/>
+    <edge id="i4_to_i2"    from="intersection_4" to="intersection_2" numLanes="2" speed="13.89"/>
+    <edge id="i4_to_i3"    from="intersection_4" to="intersection_3" numLanes="2" speed="13.89"/>
+    <edge id="i4_to_i7"    from="intersection_4" to="intersection_7" numLanes="2" speed="13.89"/>
+
+    <!-- ========== INTERSECTION 5 (Top-Center-Right, Group B) ========== -->
+    <edge id="north_to_i5" from="north_ext_3" to="intersection_5" numLanes="2" speed="13.89"/>
+    <edge id="i5_to_north" from="intersection_5" to="north_ext_3" numLanes="2" speed="13.89"/>
+    <edge id="i5_to_i2"    from="intersection_5" to="intersection_2" numLanes="2" speed="13.89"/>
+    <edge id="i5_to_i6"    from="intersection_5" to="intersection_6" numLanes="2" speed="13.89"/>
+    <edge id="i5_to_i7"    from="intersection_5" to="intersection_7" numLanes="2" speed="13.89"/>
+
+    <!-- ========== INTERSECTION 6 (Top-Right, Group B) ========== -->
+    <edge id="north_to_i6" from="north_ext_4" to="intersection_6" numLanes="2" speed="13.89"/>
+    <edge id="i6_to_north" from="intersection_6" to="north_ext_4" numLanes="2" speed="13.89"/>
+    <edge id="east_to_i6"  from="east_ext_1"  to="intersection_6" numLanes="2" speed="13.89"/>
+    <edge id="i6_to_east"  from="intersection_6" to="east_ext_1"  numLanes="2" speed="13.89"/>
+    <edge id="i6_to_i5"    from="intersection_6" to="intersection_5" numLanes="2" speed="13.89"/>
+    <edge id="i6_to_i8"    from="intersection_6" to="intersection_8" numLanes="2" speed="13.89"/>
+
+    <!-- ========== INTERSECTION 7 (Bottom-Center-Right, Group B) ========== -->
+    <edge id="south_to_i7" from="south_ext_3" to="intersection_7" numLanes="2" speed="13.89"/>
+    <edge id="i7_to_south" from="intersection_7" to="south_ext_3" numLanes="2" speed="13.89"/>
+    <edge id="i7_to_i4"    from="intersection_7" to="intersection_4" numLanes="2" speed="13.89"/>
+    <edge id="i7_to_i5"    from="intersection_7" to="intersection_5" numLanes="2" speed="13.89"/>
+    <edge id="i7_to_i8"    from="intersection_7" to="intersection_8" numLanes="2" speed="13.89"/>
+
+    <!-- ========== INTERSECTION 8 (Bottom-Right, Group B) ========== -->
+    <edge id="south_to_i8" from="south_ext_4" to="intersection_8" numLanes="2" speed="13.89"/>
+    <edge id="i8_to_south" from="intersection_8" to="south_ext_4" numLanes="2" speed="13.89"/>
+    <edge id="east_to_i8"  from="east_ext_2"  to="intersection_8" numLanes="2" speed="13.89"/>
+    <edge id="i8_to_east"  from="intersection_8" to="east_ext_2"  numLanes="2" speed="13.89"/>
+    <edge id="i8_to_i6"    from="intersection_8" to="intersection_6" numLanes="2" speed="13.89"/>
+    <edge id="i8_to_i7"    from="intersection_8" to="intersection_7" numLanes="2" speed="13.89"/>
+
+</edges>

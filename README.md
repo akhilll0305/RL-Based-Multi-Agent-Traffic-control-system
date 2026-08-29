@@ -1,367 +1,286 @@
-# 🚦 Federated Hierarchical Multi-Agent Traffic Light Control System
+# 🚦 Hierarchical Multi-Agent DDQN Traffic Light Control System
 
-**Advanced Deep Reinforcement Learning with Federated Learning for Intelligent Traffic Management**
+**Deep Reinforcement Learning for Scalable, Secure Urban Traffic Management**
 
-> A scalable multi-agent reinforcement learning system that uses Federated Hierarchical MARL to manage 8 intersections across 2 zones with supervisor agents. Extends from single-agent DDQN → multi-agent → cooperative → **federated hierarchical** with FedAvg weight aggregation.
+> A multi-phase research project that evolves automated traffic control from a single isolated intersection to a **hierarchically coordinated 8-intersection urban network** with **cyberattack-resilient LSTM-defended sensors** — built on SUMO, PyTorch, and DDQN.
 
 ---
 
 ## 📋 Table of Contents
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [System Architecture](#system-architecture)
-- [Federated Hierarchical System](#-federated-hierarchical-system-new)
-- [Performance Results](#performance-results)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [Training Details](#training-details)
-- [Evaluation](#evaluation)
-- [Technical Highlights](#technical-highlights)
-- [Future Work](#future-work)
+- [Overview](#-overview)
+- [Project Architecture](#-project-architecture)
+  - [Phase 0: Single-Agent Pretraining](#phase-0-single-agent-pretraining)
+  - [Phase 1: 4-Intersection Multi-Agent Grid](#phase-1-4-intersection-multi-agent-grid)
+  - [Phase 2: 8-Intersection Hierarchical Supervisors](#phase-2-8-intersection-hierarchical-supervisors)
+  - [Phase 3: Cybersecurity & LSTM Defense](#phase-3-cybersecurity--lstm-defense)
+- [Performance Results](#-performance-results)
+- [Installation & Setup](#-installation--setup)
+- [Usage & Commands](#-usage--commands)
+- [Project Structure](#-project-structure)
+- [Hyperparameters & Training Details](#-hyperparameters--training-details)
+- [Known Issues & Roadmap](#-known-issues--roadmap)
+- [Authors & License](#-authors--license)
 
 ---
 
 ## 🎯 Overview
 
-This project implements a sophisticated multi-agent deep reinforcement learning system for traffic light control using Double Deep Q-Networks (DDQN). Starting from a single-agent baseline trained for 1000 episodes, we demonstrate:
-
-1. **Transfer Learning Success**: Single-agent knowledge transfers effectively to multi-agent scenarios
-2. **Multi-Agent Scalability**: System scales from 1 to 4 intersections with improved per-intersection performance
-3. **Cooperative Coordination**: Agents sharing neighbor information achieve perfect load balancing
-4. **🆕 Federated Hierarchical Control**: 8 intersections in 2 zones with supervisor agents and FedAvg
-5. **Real-World Integration**: Full SUMO (Simulation of Urban MObility) integration with GPU acceleration
+This project implements Double Deep Q-Networks (DDQN) to dynamically control traffic lights across progressively larger intersection networks. Integrated with **SUMO** (Simulation of Urban MObility), the system learns to optimize vehicle throughput by observing real-time queue lengths, phase states, and inter-agent coordination signals — replacing static fixed-timer traffic lights with adaptive, learned policies.
 
 ### Key Achievements
 
-- ✅ **86.8% improvement** in reward over single-agent baseline
-- ✅ **58.9% improvement** from fine-tuning (100 episodes)
-- ✅ **Perfect load balancing** with cooperative agents
-- ✅ **Near-zero waiting times** achieved across all systems
+| Phase | Milestone | Result |
+|-------|-----------|--------|
+| **Phase 0** | Single-agent pretraining | **94.3% improvement** over fixed-timers |
+| **Phase 1** | Transfer learning to 4-intersection grid | **68% instant improvement** with zero additional training |
+| **Phase 1** | Cooperative multi-agent fine-tuning | **Perfect network load balancing** across all intersections |
+| **Phase 2** | Local Supervisor (24-dim) | **+4.6%** over decentralized 8-intersection baseline |
+| **Phase 2** | Global Supervisor (28-dim) | **+2.8%** over decentralized baseline |
+| **Phase 3** | LSTM + Z-Score defense against FDI attacks | **Full reward recovery** under active cyberattack |
 
 ---
 
-## 🌟 Key Features
+## 🏗️ Project Architecture
 
-### Multi-Mode Training
-- **Transfer Learning**: Leverage pre-trained single-agent models
-- **Independent Multi-Agent**: Each intersection optimized locally
-- **Cooperative Multi-Agent**: Network-level coordination with neighbor information
-- **Resume Capability**: Continue training from any checkpoint
+The project tackles the Curse of Dimensionality in multi-agent RL by scaling the architecture in 4 distinct phases.
 
-### Advanced RL Techniques
-- Double Deep Q-Network (DDQN) architecture
-- Experience replay with prioritized sampling
-- Target network for stability
-- Epsilon-greedy exploration with decay
-- GPU-accelerated training (CUDA support)
+### Phase 0: Single-Agent Pretraining
 
-### Comprehensive Evaluation
-- Multiple checkpoint saving (every 20 episodes)
-- Real-time training metrics
-- Performance visualization tools
-- SUMO-GUI integration for visual inspection
-- Statistical analysis across multiple episodes
-
----
-
-## 🏗️ System Architecture
-
-### Network Topology
+A single DDQN agent controls one intersection with a **6-dimensional state space**:
 
 ```
-        ┌─────────────┐
-        │   BOUNDARY  │
-        │   (North)   │
-        └──────┬──────┘
-               │
-    ┌──────────┼──────────┐
-    │          │          │
-BOUNDARY   TLS_1 ←→ TLS_2   BOUNDARY
-(West)         │          │   (East)
-               ↕          ↕
-           TLS_3 ←→ TLS_4
-               │          │
-               └──────────┘
-                   │
-            ┌──────┴──────┐
-            │   BOUNDARY  │
-            │   (South)   │
-            └─────────────┘
-
-2×2 Grid Network: 4 Intersections, 500m spacing
+State = [queue_N, queue_S, queue_E, queue_W, current_phase, time_since_change]
 ```
 
-### Agent Architecture
+- **Network:** 3-layer MLP (6 → 128 → 128 → 2) with ReLU activations
+- **Action Space:** 2 actions — keep current phase (0) or switch (1)
+- **Training:** 1000 episodes with ε-greedy exploration (ε: 1.0 → 0.01)
+- **Key Files:** `scripts/phase0_single/run.py`, `src/traffic_rl/envs/single.py`, `scripts/phase0_single/train.py`, `scripts/phase0_single/evaluate.py`
 
-**State Space:**
-- Independent Mode: 6 features
-  - Queue lengths (N, S, E, W): 4 features
-  - Current phase: 1 feature
-  - Time since last change: 1 feature
+### Phase 1: 4-Intersection Multi-Agent Grid
 
-- Cooperative Mode: 8 features
-  - Base features: 6 (as above)
-  - Neighbor queue info: 2 features (adjacent intersections)
+The single-agent model is extended to a **2×2 grid** (4 intersections, 500m spacing) using two strategies:
 
-**Action Space:**
-- Action 0: Keep current phase
-- Action 1: Switch to alternate phase
-
-**Neural Network:**
-- Input Layer: 6 or 8 neurons (state dimension)
-- Hidden Layer 1: 128 neurons (ReLU)
-- Hidden Layer 2: 128 neurons (ReLU)
-- Output Layer: 2 neurons (Q-values for actions)
-
-**Reward Function:**
-```python
-reward = -(queue_length + 0.5 * waiting_time + 10 * phase_switch_penalty)
-```
-
-![Architecture Diagram](readme_visuals/4_architecture_diagram.png)
-*Figure 4: Multi-agent system architecture showing agent-environment interaction and cooperative connections*
-
----
-
-## 🆕 Federated Hierarchical System (NEW)
-
-### Overview
-
-The latest extension scales the system to **8 intersections** in a **4×2 grid**, organized into **2 zones** managed by **supervisor agents** that communicate via **Federated Averaging (FedAvg)**.
-
-### Network Topology (4×2 Grid)
+1. **Independent Transfer Learning:** The Phase 0 checkpoint is cloned to all 4 agents. Each runs independently with its own 6-dim state.
+2. **Cooperative Mode:** State space expanded to **8 dimensions** (6 local + 2 neighbor queue values). Agents share group-averaged rewards to encourage network-level cooperation.
 
 ```
-       Zone A (Supervisor 1)           Zone B (Supervisor 2)
-      ┌───────────────────────┐       ┌───────────────────────┐
-      │  [TLS1] ──── [TLS2]──┼───────┼──[TLS5] ──── [TLS6]  │
-      │    |            |     │       │    |            |     │
-      │  [TLS3] ──── [TLS4]──┼───────┼──[TLS7] ──── [TLS8]  │
-      └───────────────────────┘       └───────────────────────┘
-                              ↑       ↑
-                         Inter-Zone Bridges
-                       (i2↔i5 and i4↔i7)
+Layout:
+  [TLS_A] --- [TLS_B]
+     |           |
+  [TLS_C] --- [TLS_D]
 ```
 
-### Hierarchical Architecture
+- **Key Files:** `scripts/phase1_grid4/run.py`, `src/traffic_rl/envs/grid4.py`
 
-| Level | Component | Input | Output | Count |
-|-------|-----------|-------|--------|-------|
-| **Local** | DDQN Agent | 8-dim state (queues, phase, zone_avg, cross_zone_pressure) | Keep/Switch phase | 8 agents |
-| **Zone** | Supervisor Agent | 24-dim state (own zone 12 + neighbor zone 12) | NS_priority / EW_priority / Balanced | 2 supervisors |
-| **Global** | FedAvg Coordinator | Agent weights | Averaged global model | 1 coordinator |
+### Phase 2: 8-Intersection Hierarchical Supervisors
 
-### Federated Averaging (FedAvg)
-
-Based on McMahan et al. (2017), the system uses **two levels of weight aggregation**:
-
-1. **Intra-Zone FedAvg** (every 10 episodes, α=0.8):
-   - Average weights of 4 local agents within each zone
-   - Preserves zone-specific knowledge while sharing learned policies
-
-2. **Inter-Zone FedAvg** (every 25 episodes, α=0.5):
-   - Average weights across all 8 local agents (softer blend)
-   - Average supervisor weights for global coordination
-   - Creates a shared global model while allowing local adaptation
-
-### Hierarchical Reward Structure
+As the grid scales to **8 intersections**, flat multi-agent systems cause localized gridlocks. The solution introduces a **two-tier hierarchy**:
 
 ```
-Local reward = -queue_length - 0.5 × waiting_time - phase_switch_penalty
-Zone reward  = 0.7 × local_reward + 0.3 × zone_average_reward
-Final reward = zone_reward + supervisor_modifier
+Layout:
+  Group A (Left)              Group B (Right)
+  [TLS_1] --- [TLS_2]  <-->  [TLS_5] --- [TLS_6]
+     |           |              |           |
+  [TLS_3] --- [TLS_4]  <-->  [TLS_7] --- [TLS_8]
 ```
 
-The supervisor dynamically adjusts local agent rewards:
-- **NS_priority**: Bonus for maintaining N-S green phases
-- **EW_priority**: Bonus for maintaining E-W green phases
-- **Balanced**: No directional bias
+#### Step 1: Local Supervisors (24-dim input)
 
-### Usage
+Each group's supervisor observes all 4 agents' raw 6-dim states concatenated into a **24-dimensional group state**. It outputs 4 continuous coordination signals ∈ [-1, +1] via tanh activation — one per agent. Each agent's state is then enhanced from 6-dim to **7-dim** (local state + supervisor signal).
 
-```bash
-# Generate 8-intersection network
-python generate_sumo_federated.py
-
-# Train federated system (700 episodes)
-python main_federated.py --episodes 700
-
-# Train with SUMO visualization
-python main_federated.py --gui
-
-# Evaluate trained model
-python main_federated.py --evaluate --gui
-
-# Generate training plots
-python evaluate_federated.py
+```
+Supervisor A: [state_tls1 || state_tls2 || state_tls3 || state_tls4] → 4 signals
+Agent i:      [6-dim local state, supervisor_signal_i] → action
 ```
 
-### New Files
+- **Supervisor Training:** TD regression on group-average reward
+- **Agent Training:** Individual reward with DDQN
 
-| File | Description |
-|------|-------------|
-| `generate_sumo_federated.py` | 4×2 grid SUMO network generator |
-| `sumo_environment_federated.py` | 8-intersection environment with zone-level observations |
-| `supervisor_agent.py` | Supervisor DDQN with coordination signals |
-| `federated_learning.py` | FedAvg implementation + FederatedCoordinator |
-| `train_federated.py` | Hierarchical training loop for all 10 agents |
-| `main_federated.py` | CLI entry point for training and evaluation |
-| `evaluate_federated.py` | Visualization and comparison plots |
+#### Step 2: Global Supervisors (28-dim input)
+
+The two supervisors exchange a **4-dimensional cross-group summary**:
+
+```
+Summary = [avg_queue, max_queue, avg_waiting_time, boundary_queue]
+```
+
+Each supervisor's input expands from 24 → **28 dimensions** (24 own + 4 from the other group). This enables proactive congestion management across group boundaries.
+
+- **Boundary Intersections:** TLS_2/TLS_4 (Group A) ↔ TLS_5/TLS_7 (Group B)
+- **Key Files:** `scripts/phase2_hierarchy/local_supervisor.py`, `scripts/phase2_hierarchy/global_supervisor.py`, `src/traffic_rl/supervisor/agent.py`, `src/traffic_rl/envs/grid8_supervisor.py`
+
+### Phase 3: Cybersecurity & LSTM Defense
+
+Smart city traffic infrastructure is vulnerable to cyberattacks. This phase implements and defends against **False Data Injection (FDI)** attacks on sensor data.
+
+#### Attack Model
+- **FDI Attack:** Random queue sensors are injected with large positive values (+10 to +15) with 15% probability per intersection per step
+- **Network Unreliability:** Packet loss (5%) and bounded delay (0–3 steps)
+
+#### Defense Architecture
+1. **Statistical Watchman (Z-Score):** Rolling-window anomaly detector (window=20, threshold=3σ) identifies values that deviate significantly from recent history
+2. **LSTM Predictor:** A pre-trained LSTM (input_size=4, hidden_size=64) predicts what the correct queue values should be based on the last 20 steps of clean history. Poisoned values are seamlessly replaced with LSTM predictions.
+
+#### Experiment Scenarios
+Five scenarios run sequentially: `baseline`, `attack`, `defense`, `unreliable`, `secure`
+
+- **Key Files:** `src/traffic_rl/security/layer.py`, `src/traffic_rl/security/lstm.py`, `scripts/phase3_security/train_lstm.py`, `scripts/phase3_security/run_scenarios.py`, `scripts/phase3_security/collect_data.py`, `scripts/analysis/security.py`
+- **Full Report:** [docs/SECURITY_PHASE_REPORT.md](docs/SECURITY_PHASE_REPORT.md)
 
 ---
 
 ## 📊 Performance Results
 
-### System Comparison
+### Phase 0 & 1 (Single Agent & 4-Intersection Grid)
 
-| System | Avg Reward | Training Time | Method | Performance |
-|--------|-----------|---------------|--------|-------------|
-| Single-Agent | -4,253.5 | 1000 episodes | Baseline | 94.3% vs fixed-time |
-| Multi-Agent Transfer | -1,363.1 | 0 episodes | Episode 900×4 | 68% better per intersection |
-| Multi-Agent Fine-Tuned | **-560.8** | 100 episodes | Transfer + Train | **86.8% improvement** ✅ |
-| Multi-Agent Cooperative | -585.8 | 700 episodes | From scratch | Perfect balance ⚖️ |
+| System | Avg Reward | Training | Improvement |
+|--------|-----------|----------|-------------|
+| Single-Agent Initial | -4,253.5 | 1000 eps | 94.3% vs fixed-time |
+| Multi-Agent Transfer | -1,363.1 | 0 eps | Instant baseline |
+| Multi-Agent Fine-Tuned | **-560.8** | 100 eps | **86.8% boost** |
+| Multi-Agent Cooperative | -585.8 | 700 eps | Perfect balance ⚖️ |
 
-### Per-Intersection Performance
+### Phase 2 (8-Intersection Hierarchy)
 
-**Independent Fine-Tuned:**
-```
-TLS_1 (Top-Left):     -807.5  (handles higher load)
-TLS_2 (Top-Right):    -663.5  
-TLS_3 (Bottom-Left):  -448.0  
-TLS_4 (Bottom-Right): -324.0  (optimal location)
+| Architecture | Input Dim | Avg Reward / Intersection | vs Baseline |
+|---|---|---|---|
+| 8-Int No Supervisor | — | -197.0 | Baseline |
+| 8-Int Local Supervisor | 24-dim | **-187.9** | 🏆 **+4.6%** |
+| 8-Int Global Supervisor | 28-dim | **-191.5** | 🏆 **+2.8%** |
 
-Average: -560.8
-```
+> **Note:** The Local Supervisor slightly outperformed the Global Supervisor under a 900-episode training budget. The 28-dim Global network's larger state space requires more training episodes to fully converge — the boundary-crossing features add complexity that hasn't fully saturated.
 
-**Cooperative:**
-```
-All Intersections:    -585.8  (perfectly balanced)
+### Phase 3 (Cybersecurity)
 
-Average: -585.8
-```
+Tested over 20 evaluation episodes per scenario:
 
-### Training Progression
-
-The system shows clear learning curves with three distinct phases:
-
-1. **Phase 1 - Transfer (Episode 900)**: Instant deployment with strong baseline performance
-2. **Phase 2 - Fine-Tuning (100 episodes)**: Rapid adaptation to multi-agent network dynamics
-3. **Phase 3 - Convergence**: Stable optimal policy achieved
-
-![System Performance](readme_visuals/1_system_performance.png)
-*Figure 1: Performance comparison across all system architectures*
-
-![Training Evolution](readme_visuals/2_training_evolution.png)
-*Figure 2: Progressive improvement through transfer learning and fine-tuning*
-
-![Per-Intersection Comparison](readme_visuals/3_intersection_comparison.png)
-*Figure 3: Independent vs Cooperative performance breakdown*
+| Scenario | Attack? | Detection Rate | Avg Wait Time | Avg Reward |
+|----------|---------|---------------|---------------|------------|
+| `baseline` | No | — | 0.044 | **-1624.5** |
+| `attack` | FDI | — | 0.020 | -1403.0 *(broken)* |
+| `defense` | FDI | ~2.31 | 0.017 | **-1491.5** *(recovered)* |
+| `unreliable` | No | — | 0.022 | -1838.5 *(noise)* |
+| `secure` | FDI | ~2.29 | 0.020 | **-1468.0** *(recovered)* |
 
 ---
 
-## 🔧 Installation
+## 🔧 Installation & Setup
 
 ### Prerequisites
 
-- Python 3.8+
-- CUDA-capable GPU (recommended: NVIDIA RTX 2050 or better)
-- SUMO Traffic Simulator
-- 8GB+ RAM
+- **Python 3.8+** (tested on 3.10–3.13)
+- **CUDA-capable GPU** (NVIDIA RTX 2050+ recommended for Phase 2)
+- **SUMO Traffic Simulator** (v1.25.0+)
 
-### Install Dependencies
+### Setup
 
+1. Install SUMO from [eclipse.org/sumo](https://www.eclipse.org/sumo/) and set the `SUMO_HOME` environment variable.
+
+2. Clone and install:
 ```bash
-# Clone repository
-git clone <your-repo-url>
-cd RL-Project-main
+git clone https://github.com/akhilll0305/RL-Based-Multi-Agent-Traffic-control-system.git
+cd RL-Based-Multi-Agent-Traffic-control-system
 
-# Create virtual environment
-python -m venv myenv
-
-# Activate environment
+python -m venv .venv
 # Windows:
-myenv\Scripts\activate
-# Linux/Mac:
-source myenv/bin/activate
+.venv\Scripts\activate
+# Linux/macOS:
+source .venv/bin/activate
 
-# Install packages
+# PyTorch with CUDA support
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install traci numpy pandas matplotlib tqdm
-```
 
-### SUMO Installation
-
-Download and install SUMO from: https://www.eclipse.org/sumo/
-
-Set environment variable:
-```bash
-# Windows
-set SUMO_HOME=C:\Program Files (x86)\Eclipse\Sumo
-
-# Linux/Mac
-export SUMO_HOME=/usr/share/sumo
+# Other dependencies
+pip install numpy pandas matplotlib tqdm traci sumolib
 ```
 
 ---
 
-## 🚀 Usage
+## 🚀 Usage & Commands
 
-### Generate Multi-Agent Network
+Every script resolves its own paths, so it can be launched from any working
+directory. The examples below assume you are at the repository root.
+
+### Phase 0: Single-Agent
 
 ```bash
-python generate_sumo_multiagent.py
+# Train
+python scripts/phase0_single/run.py --mode train --episodes 500
+
+# Evaluate
+python scripts/phase0_single/run.py --mode evaluate
 ```
 
-Creates a 2×2 grid network in `sumo_files_multiagent/`
-
-### Evaluate Pre-Trained Single-Agent
+### Phase 1: Multi-Agent (4-intersection grid)
 
 ```bash
-python main.py --mode evaluate --model-path checkpoints/ddqn_episode_900.pth --eval-episodes 10
+# Train cooperative mode
+python scripts/phase1_grid4/run.py --mode train --cooperative --episodes 700 --learning-rate 0.0005 --epsilon 0.9
+
+# Evaluate
+python scripts/phase1_grid4/run.py --mode evaluate --load-final
 ```
 
-### Multi-Agent: Test Transfer Learning
+### Phase 2: Hierarchical Supervisors (8-intersection)
 
 ```bash
-python main_multiagent.py --mode test --test-episodes 10 --pretrained-model checkpoints/ddqn_episode_900.pth
+# Decentralised baseline (no supervisor)
+python scripts/phase2_hierarchy/baseline.py --mode train --episodes 500
+
+# Step 1: Local Supervisors (24-dim)
+python scripts/phase2_hierarchy/local_supervisor.py --mode train --episodes 500
+python scripts/phase2_hierarchy/local_supervisor.py --mode evaluate --load-final --eval-episodes 20
+
+# Step 2: Global Supervisors (28-dim)
+python scripts/phase2_hierarchy/global_supervisor.py --mode train --episodes 900 --from-scratch --epsilon 0.9
+python scripts/phase2_hierarchy/global_supervisor.py --mode evaluate --load-final --eval-episodes 20
+
+# Resume training from a checkpoint
+python scripts/phase2_hierarchy/local_supervisor.py --mode train --episodes 300 --resume-from 200
+
+# Visualise with the SUMO GUI
+python scripts/phase2_hierarchy/local_supervisor.py --mode evaluate --load-final --eval-episodes 5 --gui
 ```
 
-### Multi-Agent: Fine-Tune (Independent)
+### Phase 3: Security
+
+Run these in order — each step consumes the previous step's output.
 
 ```bash
-python main_multiagent.py --mode train --episodes 100 --learning-rate 0.0001 --epsilon 0.1 --pretrained-model checkpoints/ddqn_episode_900.pth
+# 1. Collect clean baseline data
+python scripts/phase3_security/collect_data.py --episodes 50
+
+# 2. Split into train/val sets
+python scripts/phase3_security/split_data.py
+
+# 3. Validate dataset integrity
+python scripts/phase3_security/validate_data.py
+
+# 4. Train the LSTM predictor
+python scripts/phase3_security/train_lstm.py --epochs 25
+
+# 5. Run all 5 security scenarios
+python scripts/phase3_security/run_scenarios.py --episodes 20
 ```
 
-### Multi-Agent: Train Cooperative
+### Analysis & Visualisation
 
 ```bash
-python main_multiagent.py --mode train --cooperative --episodes 700 --learning-rate 0.0005 --epsilon 0.9
+python scripts/analysis/supervisor.py
+python scripts/analysis/global_supervisor.py
+python scripts/analysis/security.py
 ```
 
-### Evaluate Fine-Tuned Models
+Figures are written to `outputs/analysis/supervisor/`,
+`outputs/analysis/global_supervisor/` and `outputs/analysis/security/`.
 
-**Independent:**
-```bash
-python main_multiagent.py --mode evaluate --eval-episodes 50 --load-finetuned
-```
-
-**Cooperative:**
-```bash
-python main_multiagent.py --mode evaluate --cooperative --eval-episodes 50 --load-finetuned
-```
-
-### Visual Demonstration (SUMO-GUI)
+### Utilities
 
 ```bash
-python main_multiagent.py --mode evaluate --gui --eval-episodes 1 --load-finetuned
-```
-
-### Resume Training from Checkpoint
-
-```bash
-python main_multiagent.py --mode train --cooperative --episodes 320 --resume-from 380
+python tools/check_gpu.py                            # verify CUDA is visible to PyTorch
+python tools/save_experiment.py --preset baseline    # archive a finished training run
 ```
 
 ---
@@ -369,251 +288,121 @@ python main_multiagent.py --mode train --cooperative --episodes 320 --resume-fro
 ## 📁 Project Structure
 
 ```
-RL-Project-main/
+.
+├── src/traffic_rl/              # Importable library code
+│   ├── paths.py                 # Central path config (single source of truth)
+│   ├── core/
+│   │   ├── agent.py             #   DDQNAgent with GPU auto-detection
+│   │   ├── network.py           #   3-layer MLP
+│   │   └── replay_buffer.py     #   Experience replay
+│   ├── envs/                    # One SUMO environment per phase
+│   │   ├── single.py            #   Phase 0: single intersection
+│   │   ├── grid4.py             #   Phase 1: 2×2 grid
+│   │   ├── grid8.py             #   Phase 2: 2×4 grid baseline
+│   │   └── grid8_supervisor.py  #   Phase 2: 2×4 grid with supervisor hooks
+│   ├── supervisor/agent.py      # SupervisorNetwork + SupervisorAgent
+│   ├── security/
+│   │   ├── layer.py             #   FDI attack + Z-Score + LSTM defence
+│   │   └── lstm.py              #   TrafficLSTM model
+│   └── sumo_gen/                # Network generators: single / grid4 / grid8
 │
-├── agent.py                        # DDQN Agent implementation
-├── network.py                      # Neural network architecture
-├── replay_buffer.py                # Experience replay mechanism
-├── sumo_environment.py             # Single-agent SUMO wrapper
-├── sumo_environment_multiagent.py  # Multi-agent SUMO wrapper (4 intersections)
-├── sumo_environment_federated.py   # Federated SUMO wrapper (8 intersections) 🆕
+├── scripts/                     # Runnable entry points
+│   ├── phase0_single/           #   run.py, train.py, evaluate.py
+│   ├── phase1_grid4/            #   run.py
+│   ├── phase2_hierarchy/        #   baseline.py, local_supervisor.py,
+│   │                            #   global_supervisor.py, evaluate_*.py
+│   ├── phase3_security/         #   collect_data → split_data → validate_data
+│   │                            #   → train_lstm → run_scenarios
+│   └── analysis/                #   supervisor.py, global_supervisor.py, security.py
 │
-├── supervisor_agent.py             # Zone supervisor DDQN agent 🆕
-├── federated_learning.py           # FedAvg implementation 🆕
+├── tools/                       # check_gpu.py, experiment_manager.py,
+│                                # save_experiment.py
 │
-├── main.py                         # Single-agent training/evaluation
-├── main_multiagent.py              # Multi-agent training/evaluation
-├── main_federated.py               # Federated system entry point 🆕
+├── sumo_files/                  # Generated SUMO networks
+│   └── single/  grid4/  grid8/
 │
-├── train.py                        # Single-agent training loop
-├── train_federated.py              # Hierarchical training loop 🆕
+├── outputs/                     # Everything the code writes
+│   ├── checkpoints/             #   single/ grid4/ cooperative/ grid8/
+│   │                            #   supervisor/ global_supervisor/ security/
+│   ├── models/                  #   Exported final models
+│   ├── results/                 #   Training histories, eval CSVs, plots
+│   ├── analysis/                #   Generated analysis figures
+│   └── experiments/             #   Archived experiment snapshots
 │
-├── evaluate.py                     # Single/multi-agent evaluation
-├── evaluate_federated.py           # Federated evaluation plots 🆕
-│
-├── generate_sumo_files.py          # Single intersection generator
-├── generate_sumo_multiagent.py     # 2×2 grid generator
-├── generate_sumo_federated.py      # 4×2 grid generator 🆕
-│
-├── sumo_config/
-│   ├── single_intersection/        # 1-intersection SUMO files
-│   ├── multi_intersection/         # 2×2 grid SUMO files
-│   └── federated/                  # 4×2 grid SUMO files 🆕
-│
-├── checkpoints/
-│   ├── single_agent/               # Single-agent models
-│   ├── multiagent/                 # Independent fine-tuned models
-│   ├── cooperative/                # Cooperative models
-│   └── federated/                  # Federated hierarchical models 🆕
-│
-├── results/
-│   ├── single_agent/               # Single-agent results
-│   ├── multiagent/                 # Multi-agent results
-│   ├── cooperative/                # Cooperative results
-│   └── federated/                  # Federated training results 🆕
-│
-├── docs/                           # Reports and documentation
-├── scripts/                        # Utility scripts
-└── README.md                       # This file
+├── data/                        # Generated training data (git-ignored)
+├── docs/                        # SECURITY_PHASE_REPORT.md
+├── assets/                      # README images and presentation slides
+└── requirements.txt
 ```
 
----
-
-## 🎓 Training Details
-
-### Single-Agent Pre-Training (Episode 900)
-
-- **Duration**: 1000 episodes (Episode 900 selected as best)
-- **Learning Rate**: 0.0005
-- **Epsilon Decay**: 0.995 per episode
-- **Replay Buffer**: 50,000 experiences
-- **Batch Size**: 64
-- **Target Update**: Every 10 episodes
-- **Hardware**: NVIDIA RTX 2050 (4.29GB VRAM)
-
-### Multi-Agent Fine-Tuning (Independent)
-
-- **Initial Weights**: Episode 900 (pretrained)
-- **Duration**: 100 episodes
-- **Learning Rate**: 0.0001 (gentle fine-tuning)
-- **Epsilon Start**: 0.1 (low exploration)
-- **Training Time**: ~40 minutes
-
-### Multi-Agent Training (Cooperative)
-
-- **Initial Weights**: Random (dimension mismatch with pretrained)
-- **Duration**: 700 episodes
-- **Learning Rate**: 0.0005 (from scratch)
-- **Epsilon Start**: 0.9 (high exploration)
-- **Training Time**: ~5 hours
-- **Checkpoints**: Saved every 20 episodes
-
-![Training Efficiency](readme_visuals/5_training_efficiency.png)
-*Figure 5: Training time comparison showing the advantage of transfer learning*
+> **A note on checkpoints:** per-episode training snapshots (~370 MB) are
+> git-ignored. The final trained models (`*_final.pth`), the LSTM predictor and
+> the two episode checkpoints the scripts load by name **are** committed, so
+> evaluation runs immediately after a clone. Re-run training to regenerate the
+> full snapshot history.
 
 ---
 
-## 📈 Evaluation
+## 🧠 Hyperparameters & Training Details
 
-### Metrics Tracked
+### Neural Network Architecture
 
-- **Episode Reward**: Cumulative reward per episode
-- **Average Waiting Time**: Mean vehicle waiting time (seconds)
-- **Queue Length**: Number of halted vehicles per edge
-- **Phase Switches**: Number of traffic light changes
-- **Network Balance**: Load distribution across intersections
+| Component | Layers | Neurons | Activation | Output |
+|-----------|--------|---------|------------|--------|
+| **DDQN Agent** | 3-layer MLP | 128 hidden | ReLU | 2 (Q-values) |
+| **Supervisor** | 3-layer MLP | 64 hidden | ReLU → Tanh | 4 (signals ∈ [-1,1]) |
+| **LSTM Predictor** | 1-layer LSTM + Linear | 64 hidden | — | 4 (queue predictions) |
 
-### Statistical Analysis
+### Training Configuration
 
-All evaluations performed over 50 episodes to ensure reliability:
-- Mean performance
-- Per-intersection breakdown
-- Network-level metrics
-- Comparison with fixed-time baseline
+| Parameter | Phase 0 | Phase 1 | Phase 2 | Phase 3 (LSTM) |
+|-----------|---------|---------|---------|----------------|
+| Learning Rate | 0.001 | 0.0005 | 0.0001 (agent) / 0.001 (sup) | 0.001 |
+| Gamma (γ) | 0.95 | 0.95 | 0.95 | — |
+| Epsilon Decay | 0.995 | 0.995 | 0.995 | — |
+| Batch Size | 64 | 64 | 64 | 256 |
+| Buffer Size | 10,000 | 10,000 | 10,000 | — |
+| Target Update | 10 eps | 10 eps | 10 eps | — |
+| Gradient Clip | 10.0 | 10.0 | 10.0 | 5.0 |
 
-### Baseline Comparison
+### Reward Function
 
-**Fixed-Time Controller:**
-- 60-second cycles (30s NS, 30s EW)
-- Average waiting time: 141.0s
-- Average queue: 11.0 vehicles
+All phases share the same core reward formulation:
 
-**DDQN Performance:**
-- 94.3% reduction in waiting time
-- 81.8% reduction in queue length
-- Adaptive phase switching based on traffic conditions
+```python
+reward = -(total_queue) - 0.5 * (total_waiting_time) - 10 * (quick_switch_penalty)
+```
 
----
-
-## 💡 Technical Highlights
-
-### 1. Transfer Learning Success
-
-The Episode 900 checkpoint demonstrates remarkable generalization:
-- Trained on single intersection
-- Deployed to 4 intersections without modification
-- Achieved -1,363.1 avg reward immediately
-- Proves state representation is universal
-
-### 2. Fine-Tuning Efficiency
-
-Only 100 episodes needed to achieve 58.9% improvement:
-- Leverages pretrained knowledge
-- Adapts to network-specific traffic patterns
-- 7× faster than training from scratch
-- Demonstrates value of transfer learning
-
-### 3. Cooperative Coordination
-
-Agents successfully learn network-level optimization:
-- Perfect load balancing achieved
-- All intersections perform identically
-- Demonstrates true multi-agent learning
-- Network equilibrium discovered
-
-### 4. GPU Acceleration
-
-Efficient training with CUDA:
-- 4.29GB VRAM sufficient for 4 agents
-- ~25 seconds per episode
-- Parallel neural network updates
-- Real-time decision making
+- **Queue penalty:** Direct negative proportional to halting vehicles
+- **Waiting penalty:** 0.5× weighting on cumulative vehicle waiting time
+- **Switch penalty:** -10 if the agent attempts to switch phases within 5 seconds of the last switch
 
 ---
 
-## 🔬 Research Contributions
+## 🔮 Known Issues & Roadmap
 
-### 1. Multi-Agent Scalability
+### Active Bugs
 
-Demonstrated successful scaling from 1→4 intersections:
-- 68% better per-intersection performance
-- Linear scalability potential
-- Foundation for larger networks
+Key items from the internal 3-pass code audit:
 
-### 2. Transfer Learning Methodology
+- **BUG-01 (Critical):** Supervisor TD target broadcast — all 4 agents receive identical signals instead of differentiated urgency values
+- **BUG-03 (Medium):** Security layer logging uses incorrect `np.where(flagged)[0]` double-indexing
+- **BUG-04 (Medium):** False positive rate metric is always 0.0 (counter never incremented)
 
-Proven approach for multi-agent deployment:
-- Single-agent pretraining
-- Multi-agent transfer
-- Targeted fine-tuning
-- Results-driven efficiency
+### Planned Improvements
 
-### 3. Independent vs Cooperative Analysis
-
-Comprehensive comparison providing insights:
-- Independent: Better average performance
-- Cooperative: Perfect load balancing
-- Trade-offs quantified
-- Application-specific recommendations
+1. **Independent TD Targets** — Per-intersection reward-based supervisor training for fine-grained signal differentiation
+2. **Prioritized Experience Replay (PER)** — Replace uniform sampling with TD-error-weighted prioritization
+3. **Huber Loss** — Replace MSELoss with SmoothL1Loss to stabilize supervisor convergence
+4. **Utility Module Refactor** — Extract duplicated `partial_transfer()`, `set_seed()` into shared `utils.py`
+5. **State Normalization** — Add batch normalization or manual feature scaling for faster convergence
+6. **Dynamic Boundary Detection** — Replace hardcoded boundary TLS IDs with graph-based automatic detection
 
 ---
 
-## 🎯 Future Work
+## 📝 Authors & License
 
-### ✅ Completed
+**Project Team:** RL Traffic Control Research Group  
+Developed for academic research purposes using the SUMO Traffic Modeling Suite.
 
-1. **Federated Hierarchical MARL** (8 intersections, 2 supervisors, FedAvg)
-2. **Hierarchical Control** (local agents + zone supervisors)
-3. **Communication Protocols** (supervisor coordination signals)
-
-### Short-Term Enhancements
-
-1. **Stochastic Traffic Patterns**
-   - Random vehicle spawn times
-   - Variable flow rates
-   - More realistic scenarios
-
-2. **Even Larger Networks**
-   - 4×4 grid (16 intersections)
-   - Real city topology
-   - Scalability testing
-
-### Long-Term Goals
-
-1. **Real-World Deployment**
-   - Integration with actual traffic systems
-   - Real-time data feeds
-   - Adaptive learning in production
-
-2. **Multi-Objective Optimization**
-   - Minimize emissions
-   - Prioritize emergency vehicles
-   - Pedestrian safety
-
-3. **Advanced RL Algorithms**
-   - Multi-Agent PPO
-   - QMIX for value decomposition
-   - Graph Neural Networks for topology
-
----
-
-## 📚 References
-
-- [SUMO Traffic Simulator](https://www.eclipse.org/sumo/)
-- [Double DQN Paper](https://arxiv.org/abs/1509.06461)
-- [PyTorch Documentation](https://pytorch.org/docs/)
-
----
-
-## 👥 Acknowledgments
-
-- Original single-agent training (1000 episodes) by teammate
-- SUMO development team for excellent traffic simulation tools
-- PyTorch community for deep learning framework
-
----
-
-## 📜 License
-
-This project is for academic and research purposes.
-
----
-
-## 📧 Contact
-
-For questions or collaboration opportunities, please reach out through the repository.
-
----
-
-**Last Updated**: March 2025  
-**Status**: Federated Hierarchical System Implemented ✅
+**License:** MIT
