@@ -49,3 +49,10 @@ data/
 bugs.md
 claude.md
 security-plan.md
+paper/
+
+# --- Local-only experiment copies (diagnosis runs, archived old runs) ---
+outputs/archive/
+outputs/checkpoints/candidate_*/
+outputs/checkpoints/main_turn18_dynamic/
+outputs/checkpoints/single_dynamic/

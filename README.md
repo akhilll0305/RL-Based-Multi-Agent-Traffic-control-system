@@ -4,6 +4,10 @@
 
 > A multi-phase research project that evolves automated traffic control from a single isolated intersection to a **hierarchically coordinated 8-intersection urban network** with **cyberattack-resilient LSTM-defended sensors** — built on SUMO, PyTorch, and DDQN.
 
+> **Revision status (2026-10-22):** the results and claims below are from the original (NCA 2026) version and are
+> **superseded**. That version had a signal-control bug and wrong metrics. See [`report.md`](report.md) for what changed,
+> the current results, and how to run and demo the project.
+
 ---
 
 ## 📋 Table of Contents

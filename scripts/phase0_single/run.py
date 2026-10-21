@@ -11,6 +11,7 @@ _bootstrap()
 
 
 import os
+import random
 import numpy as np
 import torch
 import argparse
@@ -24,6 +25,7 @@ from traffic_rl.sumo_gen.single import generate_all_sumo_files
 
 def set_seed(seed=42):
     """Set random seeds for reproducibility"""
+    random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
@@ -76,12 +78,14 @@ def main(args):
         print("="*60)
         
         # Create environment (no GUI during training)
+        # Calibrated demand (env default); SUMO seed seed+k for training episode k.
+        # Evaluation uses seeds from 100000 (scripts/evaluate_rl.py), so they never overlap.
         env = SumoEnvironment(
-            net_file='sumo_files/single/intersection.net.xml',
-            route_file='sumo_files/single/routes.rou.xml',
             use_gui=False,
             num_seconds=3600,
-            delta_time=5
+            delta_time=5,
+            seed=args.seed,
+            **({'route_file': args.route_file} if args.route_file else {})
         )
         
         # Create agent
@@ -121,11 +125,10 @@ def main(args):
         
         # Create environment
         env = SumoEnvironment(
-            net_file='sumo_files/single/intersection.net.xml',
-            route_file='sumo_files/single/routes.rou.xml',
             use_gui=args.gui,
             num_seconds=3600,
-            delta_time=5
+            delta_time=5,
+            seed=100_000
         )
         
         # Load trained agent
@@ -165,8 +168,8 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default='all', 
                        choices=['train', 'evaluate', 'all'],
                        help='Mode: train, evaluate, or all')
-    parser.add_argument('--episodes', type=int, default=500,
-                       help='Number of training episodes (default: 500)')
+    parser.add_argument('--episodes', type=int, default=900,
+                       help='Number of training episodes (default: 900)')
     parser.add_argument('--eval-episodes', type=int, default=100,
                        help='Number of evaluation episodes (default: 100)')
     parser.add_argument('--model-path', type=str, default='outputs/models/ddqn_traffic_final.pth',
@@ -175,6 +178,8 @@ if __name__ == '__main__':
                        help='Use SUMO GUI during evaluation')
     parser.add_argument('--seed', type=int, default=42,
                        help='Random seed for reproducibility')
+    parser.add_argument('--route-file', default=None,
+                       help='Training route file (default: sumo_files/single/calibrated.rou.xml)')
     
     args = parser.parse_args()
     

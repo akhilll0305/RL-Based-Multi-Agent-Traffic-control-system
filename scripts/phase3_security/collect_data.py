@@ -13,7 +13,7 @@ Output files:
 
 Usage examples:
   python scripts/phase3_security/collect_data.py
-  python scripts/phase3_security/collect_data.py --episodes 100 --num-seconds 1800
+  python scripts/phase3_security/collect_data.py --episodes 100 --num-seconds 3600
   python scripts/phase3_security/collect_data.py --episodes 100 --gui
 """
 
@@ -135,15 +135,18 @@ def extract_queue_matrix(local_states: Dict[str, np.ndarray], tls_ids: List[str]
     Returns:
         np.ndarray shape (8, 4) with queue values for [N,S,E,W].
     """
-    return np.stack([local_states[tls][:4] for tls in tls_ids], axis=0).astype(np.float32)
+    # states hold log1p(queue); record the car counts
+    return np.expm1(np.stack([local_states[tls][:4] for tls in tls_ids], axis=0)).astype(np.float32)
 
 
 def collect_baseline_data(
     episodes: int = 100,
-    num_seconds: int = 1800,
+    num_seconds: int = 3600,
     delta_time: int = 5,
     use_gui: bool = False,
     seed: int = 42,
+    sumo_seed: int = 300_000,
+    route_file: str = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[str]]:
     """
     Run frozen policy and collect clean queue sequences.
@@ -160,6 +163,8 @@ def collect_baseline_data(
         use_gui=use_gui,
         num_seconds=num_seconds,
         delta_time=delta_time,
+        seed=sumo_seed,           # episode k uses sumo_seed+k: apart from training (42+), test (100000+) and validation (200000+)
+        **({'route_file': route_file} if route_file else {}),
     )
 
     ensure_checkpoints_exist(env.tls_ids)
@@ -245,10 +250,12 @@ def save_dataset(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Collect clean baseline state sequences for security-phase LSTM training")
     parser.add_argument("--episodes", type=int, default=100, help="Number of evaluation episodes to collect (default: 100)")
-    parser.add_argument("--num-seconds", type=int, default=1800, help="Episode duration in SUMO seconds")
+    parser.add_argument("--num-seconds", type=int, default=3600, help="Episode duration in SUMO seconds")
     parser.add_argument("--delta-time", type=int, default=5, help="Decision interval in seconds")
     parser.add_argument("--gui", action="store_true", help="Run with SUMO GUI")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--sumo-seed", type=int, default=300_000, help="SUMO seed of the first episode")
+    parser.add_argument("--route-file", default=None, help="Route file (default: grid8 calibrated)")
     args = parser.parse_args()
 
     print("=" * 70)
@@ -265,6 +272,8 @@ def main() -> None:
         delta_time=args.delta_time,
         use_gui=args.gui,
         seed=args.seed,
+        sumo_seed=args.sumo_seed,
+        route_file=args.route_file,
     )
     save_dataset(states, episode_lengths, start_indices, tls_ids)
 

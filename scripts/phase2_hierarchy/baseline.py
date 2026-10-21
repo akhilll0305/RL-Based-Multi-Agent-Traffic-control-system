@@ -125,6 +125,7 @@ def train(env, agents, num_episodes=300, target_update_freq=10,
                 agents[tls].save(f'{CHECKPOINT_DIR}/{tls}_episode_{actual_ep}.pth')
             print(f"\n✓ Checkpoint saved at episode {actual_ep}")
 
+    env.save_episode_log(f'{RESULTS_DIR}/training_trips.csv')   # trip metrics, one row per episode
     env.close()
 
     # Save finals
@@ -186,6 +187,7 @@ def evaluate(env, agents, num_episodes=20):
         group_a_rewards.append(sum(ep_reward[t] for t in env.group_a))
         group_b_rewards.append(sum(ep_reward[t] for t in env.group_b))
 
+    env.save_episode_log(f'{RESULTS_DIR}/eval_trips.csv')   # trip metrics, one row per episode
     env.close()
 
     # Print results
@@ -204,7 +206,7 @@ def evaluate(env, agents, num_episodes=20):
     print(f"Group B Avg: {np.mean(group_b_rewards)/4:.1f}")
     print(f"\nNetwork Total: {np.mean(network_rewards):.1f} ± {np.std(network_rewards):.1f}")
     print(f"Avg per Intersection: {np.mean(network_rewards)/8:.1f}")
-    print(f"Avg Waiting Time: {np.mean(wait_times):.2f}s")
+    env.print_trip_summary(f'{RESULTS_DIR}/eval_trips.csv')
     print("=" * 70)
 
     return {
@@ -299,7 +301,9 @@ def main(args):
     env = EightIntersectionEnv(
         use_gui=args.gui,
         num_seconds=args.num_seconds,
-        delta_time=args.delta_time
+        delta_time=args.delta_time,
+        seed=args.seed,           # SUMO seed seed+k for episode k (eval seeds start at 100000)
+        **({'route_file': args.route_file} if args.route_file else {})
     )
     print(f"  Episode duration: {args.num_seconds}s  |  Delta-time: {args.delta_time}s  |  Steps/ep: {args.num_seconds // args.delta_time}")
 
@@ -345,6 +349,10 @@ def main(args):
             path = f'{CHECKPOINT_DIR}/{tls}_final.pth'
             if os.path.exists(path):
                 agents[tls].load(path)
+                if args.mode != 'evaluate':     # continue training: use the given ε and lr, not the checkpoint's
+                    agents[tls].epsilon = args.epsilon
+                    for g in agents[tls].optimizer.param_groups:
+                        g['lr'] = args.learning_rate
                 print(f"  ✓ {tls}: Loaded final model")
             else:
                 print(f"  ⚠ {tls}: Final model not found")
@@ -360,7 +368,9 @@ def main(args):
             path = f'outputs/checkpoints/cooperative/{source}_final.pth'
             if os.path.exists(path):
                 agents[tls].load(path)
-                agents[tls].epsilon = args.epsilon
+                agents[tls].epsilon = args.epsilon      # load() restores the checkpoint's ε and lr
+                for g in agents[tls].optimizer.param_groups:
+                    g['lr'] = args.learning_rate
                 group = 'A' if tls in env.group_a else 'B'
                 print(f"  ✓ {tls} (Group {group}): weights ← {source}_final.pth  |  ε={args.epsilon}")
             else:
@@ -378,6 +388,7 @@ def main(args):
         plot_training()
 
     if args.mode in ('evaluate', 'all'):
+        env.seed, env.episode_index = 100_000, 0     # shared evaluation seeds
         evaluate(env, agents, num_episodes=args.eval_episodes)
 
     print("\n" + "=" * 70)
@@ -408,10 +419,12 @@ if __name__ == '__main__':
                         help='Train from scratch (ignore cooperative checkpoints)')
     parser.add_argument('--gui', action='store_true',
                         help='Use SUMO GUI')
-    parser.add_argument('--num-seconds', type=int, default=1800,
-                        help='Episode duration in seconds (default: 1800 for fast fine-tuning)')
+    parser.add_argument('--num-seconds', type=int, default=3600,
+                        help='Episode duration in seconds (default: 3600, same for every phase)')
     parser.add_argument('--delta-time', type=int, default=5,
                         help='Seconds between agent decisions (default: 5)')
+    parser.add_argument('--route-file', default=None,
+                        help='Route file (default: sumo_files/grid8/calibrated.rou.xml)')
     parser.add_argument('--seed', type=int, default=42,
                         help='Random seed')
 

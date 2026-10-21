@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    
+    
+    <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5" minGap="2.5" maxSpeed="50" guiShape="passenger" />
+    
+    
+    
+    <route id="n1_to_s1" edges="north_to_i1 i1_to_i3 i3_to_south" />
+    <route id="n2_to_s2" edges="north_to_i2 i2_to_i4 i4_to_south" />
+    
+    
+    <route id="s1_to_n1" edges="south_to_i3 i3_to_i1 i1_to_north" />
+    <route id="s2_to_n2" edges="south_to_i4 i4_to_i2 i2_to_north" />
+    
+    
+    <route id="e1_to_w1" edges="east_to_i2 i2_to_i1 i1_to_west" />
+    <route id="e2_to_w2" edges="east_to_i4 i4_to_i3 i3_to_west" />
+    
+    
+    <route id="w1_to_e1" edges="west_to_i1 i1_to_i2 i2_to_east" />
+    <route id="w2_to_e2" edges="west_to_i3 i3_to_i4 i4_to_east" />
+    
+    
+    <route id="nw_to_se" edges="north_to_i1 i1_to_i2 i2_to_i4 i4_to_south" />
+    <route id="ne_to_sw" edges="north_to_i2 i2_to_i1 i1_to_i3 i3_to_south" />
+    
+    
+    <route id="n1_to_e" edges="north_to_i1 i1_to_i2 i2_to_east" />
+    <route id="w1_to_s" edges="west_to_i1 i1_to_i3 i3_to_south" />
+    <route id="s2_to_w" edges="south_to_i4 i4_to_i3 i3_to_west" />
+    <route id="e1_to_n" edges="east_to_i2 i2_to_i1 i1_to_north" />
+    
+    
+    <flow id="flow_n1_s1_p1" type="car" route="n1_to_s1" begin="0" end="900" probability="0.16250" />
+    <flow id="flow_n2_s2_p1" type="car" route="n2_to_s2" begin="0" end="900" probability="0.16250" />
+    <flow id="flow_s1_n1_p1" type="car" route="s1_to_n1" begin="0" end="900" probability="0.16250" />
+    <flow id="flow_s2_n2_p1" type="car" route="s2_to_n2" begin="0" end="900" probability="0.16250" />
+    
+    <flow id="flow_e1_w1_p1" type="car" route="e1_to_w1" begin="0" end="900" probability="0.08750" />
+    <flow id="flow_e2_w2_p1" type="car" route="e2_to_w2" begin="0" end="900" probability="0.08750" />
+    <flow id="flow_w1_e1_p1" type="car" route="w1_to_e1" begin="0" end="900" probability="0.08750" />
+    <flow id="flow_w2_e2_p1" type="car" route="w2_to_e2" begin="0" end="900" probability="0.08750" />
+    
+    <flow id="flow_nw_se_p1" type="car" route="nw_to_se" begin="0" end="900" probability="0.09750" />
+    <flow id="flow_ne_sw_p1" type="car" route="ne_to_sw" begin="0" end="900" probability="0.09750" />
+    
+    <flow id="flow_n1_e_p1" type="car" route="n1_to_e" begin="0" end="900" probability="0.09750" />
+    <flow id="flow_w1_s_p1" type="car" route="w1_to_s" begin="0" end="900" probability="0.05250" />
+    <flow id="flow_s2_w_p1" type="car" route="s2_to_w" begin="0" end="900" probability="0.09750" />
+    <flow id="flow_e1_n_p1" type="car" route="e1_to_n" begin="0" end="900" probability="0.05250" />
+    
+<flow id="flow_n1_s1_p2" type="car" route="n1_to_s1" begin="900" end="1800" probability="0.13750" />
+    <flow id="flow_n2_s2_p2" type="car" route="n2_to_s2" begin="900" end="1800" probability="0.13750" />
+    <flow id="flow_s1_n1_p2" type="car" route="s1_to_n1" begin="900" end="1800" probability="0.13750" />
+    <flow id="flow_s2_n2_p2" type="car" route="s2_to_n2" begin="900" end="1800" probability="0.13750" />
+    
+    <flow id="flow_e1_w1_p2" type="car" route="e1_to_w1" begin="900" end="1800" probability="0.13750" />
+    <flow id="flow_e2_w2_p2" type="car" route="e2_to_w2" begin="900" end="1800" probability="0.13750" />
+    <flow id="flow_w1_e1_p2" type="car" route="w1_to_e1" begin="900" end="1800" probability="0.13750" />
+    <flow id="flow_w2_e2_p2" type="car" route="w2_to_e2" begin="900" end="1800" probability="0.13750" />
+    
+    <flow id="flow_nw_se_p2" type="car" route="nw_to_se" begin="900" end="1800" probability="0.08250" />
+    <flow id="flow_ne_sw_p2" type="car" route="ne_to_sw" begin="900" end="1800" probability="0.08250" />
+    
+    <flow id="flow_n1_e_p2" type="car" route="n1_to_e" begin="900" end="1800" probability="0.08250" />
+    <flow id="flow_w1_s_p2" type="car" route="w1_to_s" begin="900" end="1800" probability="0.08250" />
+    <flow id="flow_s2_w_p2" type="car" route="s2_to_w" begin="900" end="1800" probability="0.08250" />
+    <flow id="flow_e1_n_p2" type="car" route="e1_to_n" begin="900" end="1800" probability="0.08250" />
+    
+<flow id="flow_n1_s1_p3" type="car" route="n1_to_s1" begin="1800" end="2700" probability="0.08750" />
+    <flow id="flow_n2_s2_p3" type="car" route="n2_to_s2" begin="1800" end="2700" probability="0.08750" />
+    <flow id="flow_s1_n1_p3" type="car" route="s1_to_n1" begin="1800" end="2700" probability="0.08750" />
+    <flow id="flow_s2_n2_p3" type="car" route="s2_to_n2" begin="1800" end="2700" probability="0.08750" />
+    
+    <flow id="flow_e1_w1_p3" type="car" route="e1_to_w1" begin="1800" end="2700" probability="0.16250" />
+    <flow id="flow_e2_w2_p3" type="car" route="e2_to_w2" begin="1800" end="2700" probability="0.16250" />
+    <flow id="flow_w1_e1_p3" type="car" route="w1_to_e1" begin="1800" end="2700" probability="0.16250" />
+    <flow id="flow_w2_e2_p3" type="car" route="w2_to_e2" begin="1800" end="2700" probability="0.16250" />
+    
+    <flow id="flow_nw_se_p3" type="car" route="nw_to_se" begin="1800" end="2700" probability="0.05250" />
+    <flow id="flow_ne_sw_p3" type="car" route="ne_to_sw" begin="1800" end="2700" probability="0.05250" />
+    
+    <flow id="flow_n1_e_p3" type="car" route="n1_to_e" begin="1800" end="2700" probability="0.05250" />
+    <flow id="flow_w1_s_p3" type="car" route="w1_to_s" begin="1800" end="2700" probability="0.09750" />
+    <flow id="flow_s2_w_p3" type="car" route="s2_to_w" begin="1800" end="2700" probability="0.05250" />
+    <flow id="flow_e1_n_p3" type="car" route="e1_to_n" begin="1800" end="2700" probability="0.09750" />
+    
+<flow id="flow_n1_s1_p4" type="car" route="n1_to_s1" begin="2700" end="3600" probability="0.11250" />
+    <flow id="flow_n2_s2_p4" type="car" route="n2_to_s2" begin="2700" end="3600" probability="0.11250" />
+    <flow id="flow_s1_n1_p4" type="car" route="s1_to_n1" begin="2700" end="3600" probability="0.11250" />
+    <flow id="flow_s2_n2_p4" type="car" route="s2_to_n2" begin="2700" end="3600" probability="0.11250" />
+    
+    <flow id="flow_e1_w1_p4" type="car" route="e1_to_w1" begin="2700" end="3600" probability="0.11250" />
+    <flow id="flow_e2_w2_p4" type="car" route="e2_to_w2" begin="2700" end="3600" probability="0.11250" />
+    <flow id="flow_w1_e1_p4" type="car" route="w1_to_e1" begin="2700" end="3600" probability="0.11250" />
+    <flow id="flow_w2_e2_p4" type="car" route="w2_to_e2" begin="2700" end="3600" probability="0.11250" />
+    
+    <flow id="flow_nw_se_p4" type="car" route="nw_to_se" begin="2700" end="3600" probability="0.06750" />
+    <flow id="flow_ne_sw_p4" type="car" route="ne_to_sw" begin="2700" end="3600" probability="0.06750" />
+    
+    <flow id="flow_n1_e_p4" type="car" route="n1_to_e" begin="2700" end="3600" probability="0.06750" />
+    <flow id="flow_w1_s_p4" type="car" route="w1_to_s" begin="2700" end="3600" probability="0.06750" />
+    <flow id="flow_s2_w_p4" type="car" route="s2_to_w" begin="2700" end="3600" probability="0.06750" />
+    <flow id="flow_e1_n_p4" type="car" route="e1_to_n" begin="2700" end="3600" probability="0.06750" />
+    
+</routes>

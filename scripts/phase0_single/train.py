@@ -117,6 +117,7 @@ def train_ddqn(env, agent, num_episodes=1000, target_update_freq=10, save_freq=1
             agent.save(checkpoint_path)
     
     # Close environment
+    env.save_episode_log('outputs/results/single/training_trips.csv')   # trip metrics, one row per episode
     env.close()
     
     # Save training history to CSV

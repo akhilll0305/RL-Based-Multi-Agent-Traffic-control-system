@@ -7,14 +7,19 @@ import sumolib
 import numpy as np
 import os
 
+from traffic_rl.envs.common import (SumoEpisodeMixin, DIRECTIONS, MIN_SWITCH_S, switch_due,
+                                    queue_feature, time_feature)
 
-class SumoEnvironment:
+
+class SumoEnvironment(SumoEpisodeMixin):
     def __init__(self, 
                  net_file='sumo_files/single/intersection.net.xml',
-                 route_file='sumo_files/single/routes.rou.xml',
+                 route_file='sumo_files/single/calibrated.rou.xml',
                  use_gui=False,
                  num_seconds=3600,
-                 delta_time=5):
+                 delta_time=5,
+                 seed=None,
+                 reward_mode='queue'):
         """
         SUMO Environment for Traffic Light Control
         
@@ -24,6 +29,9 @@ class SumoEnvironment:
             use_gui: Whether to use SUMO GUI (True) or sumo-cmd (False)
             num_seconds: Episode duration in seconds
             delta_time: Seconds between RL agent decisions
+            seed: None = fresh random traffic each episode; int = reproducible
+            reward_mode: 'queue' = -queue only (default; revision);
+                         'original' = -queue - 0.5 * consecutive waiting time (NCA submission)
         """
         self.net_file = net_file
         self.route_file = route_file
@@ -32,9 +40,12 @@ class SumoEnvironment:
         self.delta_time = delta_time
         self.sumo_cmd = None
         self.sumo_running = False
-        
+        self.sumocfg = "sumo_files/single/simulation.sumocfg"
+        self.reward_mode = reward_mode
+
         # Traffic light ID
         self.tls_id = "center"
+        self.tls_ids = [self.tls_id]
         
         # Edge IDs for each direction
         self.edges = {
@@ -57,45 +68,23 @@ class SumoEnvironment:
         # Metrics tracking
         self.total_waiting_time = 0
         self.vehicles_passed = 0
-    
-    def start_sumo(self):
-        """Start SUMO simulation"""
-        sumo_binary = "sumo-gui" if self.use_gui else "sumo"
-        self.sumo_cmd = [
-            sumo_binary,
-            "-c", "sumo_files/single/simulation.sumocfg",
-            "--no-step-log", "true",
-            "--waiting-time-memory", "10000",
-            "--time-to-teleport", "-1",
-            "--no-warnings", "true"
-        ]
-        traci.start(self.sumo_cmd)
-        self.sumo_running = True
-    
+        self._init_episode_plumbing(
+            seed, {self.tls_id: [self.edges[d] for d in DIRECTIONS]})
+
     def reset(self):
-        """Reset environment for new episode"""
-        # Close existing SUMO instance if running
-        if self.sumo_running:
-            traci.close()
-            self.sumo_running = False
-        
-        # Start new SUMO simulation
-        self.start_sumo()
-        
+        """Reset environment for new episode (closes and summarises the previous one)"""
+        self._start_episode()
+
         # Reset internal state
         self.current_phase = 0
         self.time_since_last_change = 0
         self.simulation_step = 0
         self.total_waiting_time = 0
         self.vehicles_passed = 0
-        
-        # Set initial traffic light phase
-        traci.trafficlight.setPhase(self.tls_id, self.current_phase)
-        
-        # Run a few steps to initialize
-        for _ in range(self.delta_time):
-            traci.simulationStep()
-        
+
+        # Run a few steps to initialize (lights already held on NS green)
+        self._advance(self.delta_time)
+
         return self._get_state()
     
     def step(self, action):
@@ -112,17 +101,16 @@ class SumoEnvironment:
             info: dict with additional metrics
         """
         # Apply action
-        if action == 1 and self.time_since_last_change >= 5:
-            # Switch phase
+        if switch_due(action, self.time_since_last_change):
+            # Switch phase (forced after the maximum green)
             self.current_phase = 1 - self.current_phase
-            traci.trafficlight.setPhase(self.tls_id, self.phases[self.current_phase])
+            self.signals.switch(self.tls_id, self.current_phase)
             self.time_since_last_change = 0
-        
+
         # Simulate for delta_time seconds
-        for _ in range(self.delta_time):
-            traci.simulationStep()
-            self.simulation_step += 1
-        
+        self._advance(self.delta_time)
+        self.simulation_step += self.delta_time
+
         self.time_since_last_change += self.delta_time
         
         # Get new state
@@ -151,24 +139,19 @@ class SumoEnvironment:
             numpy array: [queue_N, queue_S, queue_E, queue_W, phase, time_since_change]
         """
         # Get queue lengths (halting vehicles) for each edge
-        queue_north = traci.edge.getLastStepHaltingNumber(self.edges['north'])
-        queue_south = traci.edge.getLastStepHaltingNumber(self.edges['south'])
-        queue_east = traci.edge.getLastStepHaltingNumber(self.edges['east'])
-        queue_west = traci.edge.getLastStepHaltingNumber(self.edges['west'])
+        queue_north = self._queue(self.edges['north'])
+        queue_south = self._queue(self.edges['south'])
+        queue_east = self._queue(self.edges['east'])
+        queue_west = self._queue(self.edges['west'])
         
-        # Cap queues at 20 for normalization
-        queue_north = min(queue_north, 20)
-        queue_south = min(queue_south, 20)
-        queue_east = min(queue_east, 20)
-        queue_west = min(queue_west, 20)
-        
+        # log1p, not a cap: a capped input stops changing once every queue is long
         state = np.array([
-            queue_north,
-            queue_south,
-            queue_east,
-            queue_west,
+            queue_feature(queue_north),
+            queue_feature(queue_south),
+            queue_feature(queue_east),
+            queue_feature(queue_west),
             self.current_phase,
-            min(self.time_since_last_change, 60)
+            time_feature(self.time_since_last_change)
         ], dtype=np.float32)
         
         return state
@@ -182,33 +165,27 @@ class SumoEnvironment:
         """
         # Get queue lengths
         total_queue = sum([
-            traci.edge.getLastStepHaltingNumber(self.edges['north']),
-            traci.edge.getLastStepHaltingNumber(self.edges['south']),
-            traci.edge.getLastStepHaltingNumber(self.edges['east']),
-            traci.edge.getLastStepHaltingNumber(self.edges['west'])
+            self._queue(self.edges['north']),
+            self._queue(self.edges['south']),
+            self._queue(self.edges['east']),
+            self._queue(self.edges['west'])
         ])
         
-        # Get waiting times for all vehicles
-        vehicle_ids = traci.vehicle.getIDList()
-        total_waiting = sum([traci.vehicle.getWaitingTime(vid) for vid in vehicle_ids])
-        
-        # Update cumulative metrics
-        self.total_waiting_time += total_waiting
-        
         # Reward calculation
-        reward = -total_queue - 0.5 * total_waiting
+        if self.reward_mode == 'queue':
+            reward = -total_queue
+        else:
+            # Get waiting times for all vehicles (only needed by the original reward)
+            vehicle_ids = traci.vehicle.getIDList()
+            total_waiting = sum([traci.vehicle.getWaitingTime(vid) for vid in vehicle_ids])
+            self.total_waiting_time += total_waiting
+            reward = -total_queue - 0.5 * total_waiting
         
         # Penalty for switching too quickly
-        if action == 1 and self.time_since_last_change < 5:
+        if action == 1 and self.time_since_last_change < MIN_SWITCH_S:
             reward -= 10
         
         return reward
-    
-    def close(self):
-        """Close SUMO simulation"""
-        if self.sumo_running:
-            traci.close()
-            self.sumo_running = False
     
     def get_traffic_metrics(self):
         """Get detailed traffic metrics for evaluation"""
@@ -219,7 +196,7 @@ class SumoEnvironment:
             'total_waiting_time': sum([traci.vehicle.getWaitingTime(vid) for vid in vehicle_ids]),
             'average_speed': np.mean([traci.vehicle.getSpeed(vid) for vid in vehicle_ids]) if vehicle_ids else 0,
             'total_queue': sum([
-                traci.edge.getLastStepHaltingNumber(edge) 
+                self._queue(edge) 
                 for edge in self.edges.values()
             ])
         }

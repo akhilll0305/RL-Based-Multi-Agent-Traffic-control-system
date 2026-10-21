@@ -25,7 +25,9 @@ class DDQNAgent:
                  epsilon_decay=0.995,
                  epsilon_min=0.01,
                  batch_size=64,
-                 buffer_capacity=10000):
+                 buffer_capacity=10000,
+                 reward_scale=1.0,
+                 loss='mse'):
         """
         DDQN Agent for Traffic Light Control
         
@@ -40,6 +42,10 @@ class DDQNAgent:
             epsilon_min: Minimum exploration rate
             batch_size: Batch size for training
             buffer_capacity: Replay buffer capacity
+            reward_scale: Rewards are multiplied by this in the TD target. Grid queues give
+                rewards of -100..-300 per step; unscaled, the Q-values must reach thousands
+                and the keep/switch difference is lost in the fit of that scale.
+            loss: 'mse' or 'huber'
         """
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -48,6 +54,7 @@ class DDQNAgent:
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
         self.batch_size = batch_size
+        self.reward_scale = reward_scale
         
         # Device configuration - Auto-detect GPU or use CPU
         if torch.cuda.is_available():
@@ -80,7 +87,7 @@ class DDQNAgent:
         self.optimizer = optim.Adam(self.online_network.parameters(), lr=learning_rate)
         
         # Loss function
-        self.loss_fn = nn.MSELoss()
+        self.loss_fn = nn.SmoothL1Loss() if loss == 'huber' else nn.MSELoss()
         
         # Replay buffer
         self.memory = ReplayBuffer(capacity=buffer_capacity)
@@ -145,7 +152,7 @@ class DDQNAgent:
             next_q_values = self.target_network(next_states).gather(1, next_actions)
             
             # Calculate TD target
-            target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
+            target_q_values = self.reward_scale * rewards + (1 - dones) * self.gamma * next_q_values
         
         # Compute loss
         loss = self.loss_fn(current_q_values, target_q_values)

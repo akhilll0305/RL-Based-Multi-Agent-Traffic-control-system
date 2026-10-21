@@ -12,6 +12,7 @@ _bootstrap()
 
 
 import os
+import random
 import numpy as np
 import torch
 import argparse
@@ -20,6 +21,27 @@ from traffic_rl.core.agent import DDQNAgent
 from tqdm import tqdm
 import pandas as pd
 import matplotlib.pyplot as plt
+
+
+
+def load_widened(agent, path):
+    """Load a 6-input checkpoint into a wider (cooperative) network.
+
+    The extra neighbour inputs get zero weights, so the agent starts out acting exactly like
+    the pretrained single-intersection policy and learns to use its neighbours from there.
+    """
+    ckpt = torch.load(path, map_location=agent.device, weights_only=False)
+    src = ckpt['online_network_state_dict']
+    for net in (agent.online_network, agent.target_network):
+        dst = net.state_dict()
+        for k, v in src.items():
+            if dst[k].shape == v.shape:
+                dst[k] = v.clone()
+            else:                                   # first layer: [hidden, 6] -> [hidden, 8]
+                w = torch.zeros_like(dst[k])
+                w[:, :v.shape[1]] = v
+                dst[k] = w
+        net.load_state_dict(dst)
 
 
 def test_transfer(env, agents, num_episodes=10):
@@ -63,6 +85,7 @@ def test_transfer(env, agents, num_episodes=10):
             episode_rewards[tls].append(episode_reward[tls])
         network_rewards.append(sum(episode_reward.values()))
     
+    env.save_episode_log(f"outputs/results/{'cooperative' if env.cooperative else 'grid4'}/transfer_trips.csv")   # trip metrics, one row per episode
     env.close()
     
     # Calculate statistics
@@ -186,6 +209,7 @@ def fine_tune(env, agents, num_episodes=100, target_update_freq=10, save_freq=20
                 agents[tls].save(f'{checkpoint_dir}/{tls}_episode_{actual_episode}.pth')
             print(f"\n✓ Checkpoint saved at episode {actual_episode}")
     
+    env.save_episode_log(os.path.join(os.path.dirname(history_file), 'training_trips.csv'))   # trip metrics, one row per episode
     env.close()
     
     # Save final models
@@ -238,6 +262,7 @@ def evaluate_multiagent(env, agents, num_episodes=20):
             episode_rewards[tls].append(episode_reward[tls])
         network_rewards.append(sum(episode_reward.values()))
     
+    env.save_episode_log(f"outputs/results/{'cooperative' if env.cooperative else 'grid4'}/eval_trips.csv")   # trip metrics, one row per episode
     env.close()
     
     # Print results
@@ -254,7 +279,7 @@ def evaluate_multiagent(env, agents, num_episodes=20):
     print(f"\nNetwork Performance:")
     print(f"  Total Reward: {np.mean(network_rewards):.1f} ± {np.std(network_rewards):.1f}")
     print(f"  Avg per Intersection: {np.mean(network_rewards)/4:.1f}")
-    print(f"  Avg Waiting Time: {np.mean(network_waiting_times):.2f}s ± {np.std(network_waiting_times):.2f}s")
+    env.print_trip_summary(f"outputs/results/{'cooperative' if env.cooperative else 'grid4'}/eval_trips.csv")
     print("="*70)
     
     return {
@@ -269,12 +294,21 @@ def main(args):
     print("Multi-Agent DDQN Traffic Light Control (4 Intersections)")
     print("="*70)
     
-    # Create environment
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+
+    # Create environment (calibrated demand is the env default; SUMO seed seed+k
+    # for episode k, disjoint from the evaluation seeds starting at 100000)
     env = MultiAgentSumoEnvironment(
         use_gui=args.gui,
         num_seconds=3600,
         delta_time=5,
-        cooperative=args.cooperative
+        cooperative=args.cooperative,
+        seed=args.seed,
+        neighbor_timing=args.neighbor_timing,
+        cycle_clock_s=args.cycle_clock,
+        **({'route_file': args.route_file} if args.route_file else {})
     )
     
     state_dim = env.get_state_dim()
@@ -296,8 +330,11 @@ def main(args):
             hidden_dim=128,
             learning_rate=args.learning_rate,
             epsilon_start=args.epsilon,
-            epsilon_decay=0.995,
-            epsilon_min=0.01
+            epsilon_decay=args.epsilon_decay,
+            epsilon_min=0.01,
+            gamma=args.gamma,
+            reward_scale=args.reward_scale,
+            loss=args.loss
         )
         
         # Load weights: resume, fine-tuned, or pretrained model
@@ -312,14 +349,17 @@ def main(args):
             if os.path.exists(resume_path):
                 agents[tls].load(resume_path)
                 # Adjust epsilon to the value it would have at this episode
-                decay_factor = 0.995 ** args.resume_from
+                decay_factor = args.epsilon_decay ** args.resume_from
                 agents[tls].epsilon = max(args.epsilon * decay_factor, agents[tls].epsilon_min)
                 print(f"  ✓ {tls}: Resumed from episode {args.resume_from} (epsilon: {agents[tls].epsilon:.4f})")
             else:
                 print(f"  ❌ {tls}: Resume checkpoint not found at {resume_path}")
                 return
-        elif args.cooperative and not args.load_finetuned:
-            print(f"  ⚠ {tls}: Cooperative mode - starting with random weights (can't use 6-feature pretrained model)")
+        elif (args.cooperative or state_dim != 6) and not args.load_finetuned \
+                and os.path.exists(args.pretrained_model):
+            load_widened(agents[tls], args.pretrained_model)
+            print(f"  ✓ {tls}: Cooperative mode - {args.pretrained_model} widened to {state_dim} inputs "
+                  f"(neighbour weights start at 0)")
         elif args.load_finetuned:
             # Load individual fine-tuned models (check cooperative dir first, then independent)
             if args.cooperative:
@@ -335,7 +375,12 @@ def main(args):
         elif os.path.exists(args.pretrained_model):
             # Load shared pretrained model (like Episode 900)
             agents[tls].load(args.pretrained_model)
-            print(f"  ✓ {tls}: Loaded {args.pretrained_model}")
+            # load() also restores the checkpoint's epsilon (~0.01 after 900 episodes) and the
+            # optimizer's lr (1e-3); fine-tuning is meant to use --epsilon and --learning-rate
+            agents[tls].epsilon = args.epsilon
+            for g in agents[tls].optimizer.param_groups:
+                g['lr'] = args.learning_rate
+            print(f"  ✓ {tls}: Loaded {args.pretrained_model} (epsilon {args.epsilon}, lr {args.learning_rate})")
         else:
             print(f"  ⚠ {tls}: Starting with random weights")
     
@@ -355,6 +400,7 @@ def main(args):
     
     # Phase 2: Evaluate
     if args.mode == 'evaluate' or args.mode == 'all':
+        env.seed, env.episode_index = args.eval_seed, 0     # shared evaluation seeds
         evaluate_multiagent(env, agents, num_episodes=args.eval_episodes)
     
     print("\n" + "="*70)
@@ -386,8 +432,25 @@ if __name__ == '__main__':
                        help='Learning rate for fine-tuning (default: 0.0001)')
     parser.add_argument('--epsilon', type=float, default=0.1,
                        help='Initial epsilon for fine-tuning (default: 0.1)')
+    parser.add_argument('--epsilon-decay', type=float, default=0.995,
+                       help='Per-episode epsilon decay (default: 0.995)')
+    parser.add_argument('--gamma', type=float, default=0.95)
+    parser.add_argument('--neighbor-timing', action='store_true',
+                       help='Cooperative: add neighbour phase and time since switch to the state')
+    parser.add_argument('--cycle-clock', type=int, default=None,
+                       help='Add a shared background-cycle clock (sin/cos, period in s) to every state')
+    parser.add_argument('--route-file', default=None,
+                       help='Route file (default: the env default, sumo_files/grid4/calibrated.rou.xml)')
+    parser.add_argument('--reward-scale', type=float, default=1.0,
+                       help='Multiplies the reward in the TD target (default: 1.0)')
+    parser.add_argument('--loss', choices=['mse', 'huber'], default='mse')
+    parser.add_argument('--eval-seed', type=int, default=100_000,
+                       help='First SUMO seed of the evaluation episodes (test seeds: 100000; '
+                            'use another range, e.g. 200000, for validation)')
     parser.add_argument('--gui', action='store_true',
                        help='Use SUMO GUI for visualization')
+    parser.add_argument('--seed', type=int, default=42,
+                       help='Seed for torch/numpy/random and the SUMO episode seeds')
     
     args = parser.parse_args()
     

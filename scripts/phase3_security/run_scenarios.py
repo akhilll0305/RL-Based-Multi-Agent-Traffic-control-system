@@ -35,7 +35,9 @@ from traffic_rl.supervisor.agent import SupervisorAgent
 CHECKPOINT_DIR_AGENTS = "outputs/checkpoints/supervisor/agents"
 CHECKPOINT_DIR_SUPERVISORS = "outputs/checkpoints/supervisor/supervisors"
 RESULTS_DIR = "outputs/results/security"
-SCENARIOS = ["baseline", "attack", "defense", "unreliable", "secure"]
+SCENARIOS = ["baseline", "guard", "attack", "defense", "unreliable", "secure"]
+METRICS = ('mean_time_in_system_all', 'mean_travel_time', 'mean_time_loss', 'mean_waiting_time',
+           'throughput_veh_h', 'pending_insertion', 'mean_queue', 'unfinished')
 
 
 def load_trained_system(
@@ -121,6 +123,8 @@ def run_single_scenario(
 
     for ep in range(episodes):
         local_states = env.reset()
+        security.reset()
+        det_before = {k: getattr(security, k) for k in ('tp', 'fp', 'fn', 'tn')}
         local_states = security.process(local_states, step=0)
 
         signals_a = supervisor_a.get_signals({tls: local_states[tls] for tls in env.group_a})
@@ -149,8 +153,10 @@ def run_single_scenario(
             for tls in env.tls_ids:
                 ep_reward[tls] += float(rewards[tls])
 
-            if done:
-                wait_times.append(float(info["avg_waiting_time"]))
+
+        trip = env.finish_episode()
+        # Trip-based: accumulated waiting time averaged over completed trips
+        wait_times.append(float(trip["mean_waiting_time"]))
 
         for tls in env.tls_ids:
             per_intersection_rewards[tls].append(ep_reward[tls])
@@ -165,8 +171,13 @@ def run_single_scenario(
             "episode": int(ep + 1),
             "network_reward": net_reward,
             "avg_intersection_reward": avg_intersection,
-            "avg_wait_time": float(wait_times[-1]) if wait_times else 0.0,
+            "avg_wait_time": float(wait_times[-1]),
+            "episode_seed": trip["episode_seed"],
         }
+        for k in METRICS:
+            row[k] = float(trip[k])
+        for k in ('tp', 'fp', 'fn', 'tn'):
+            row[k] = int(getattr(security, k) - det_before[k])
         for tls in env.tls_ids:
             row[tls] = float(ep_reward[tls])
         episode_rows.append(row)
@@ -184,6 +195,13 @@ def run_single_scenario(
         "detection_rate": float(metrics.get("detection_rate", 0.0)),
         "false_positive_rate": float(metrics.get("false_positive_rate", 0.0)),
     }
+    for k in METRICS:
+        vals = [r[k] for r in episode_rows]
+        summary[f"mean_{k}" if not k.startswith("mean_") else k] = float(np.mean(vals))
+        summary[f"std_{k.replace('mean_', '')}"] = float(np.std(vals, ddof=1)) if len(vals) > 1 else 0.0
+    for k in ("precision", "recall", "f1", "mcc", "roc_auc", "flags_per_attack",
+              "tp", "fp", "fn", "tn", "total_attack_events"):
+        summary[k] = float(metrics.get(k, float("nan")))
 
     return {
         "episodes": int(episodes),
@@ -204,15 +222,26 @@ def run_single_scenario(
     }
 
 
-def _build_security_layer(mode: str, seed: int = 42) -> SecurityLayer:
+def _build_security_layer(mode: str, seed: int = 42, attack_type: str = "random",
+                          z_threshold: float = 3.0, std_floor: float = 1e-6,
+                          min_deviation: float = 0.0, persistence: int = 1,
+                          detector: str = "zscore", residual_threshold: float = 5.0,
+                          spike_rollback: bool = False) -> SecurityLayer:
     """Create scenario-specific security layer with reasonable defaults."""
     return SecurityLayer(
         mode=mode,
+        attack_type=attack_type,
+        std_floor=std_floor,
+        min_deviation=min_deviation,
+        persistence=persistence,
+        detector=detector,
+        residual_threshold=residual_threshold,
+        spike_rollback=spike_rollback,
         fdi_prob=0.15,
         fdi_min=10.0,
         fdi_max=15.0,
         window_size=20,
-        z_threshold=3.0,
+        z_threshold=z_threshold,
         packet_loss_prob=0.05,
         max_delay_steps=3,
         lstm_checkpoint="outputs/checkpoints/security/lstm_predictor.pth",
@@ -223,9 +252,21 @@ def _build_security_layer(mode: str, seed: int = 42) -> SecurityLayer:
 def run_all_scenarios(
     episodes: int = 20,
     use_gui: bool = False,
-    num_seconds: int = 1800,
+    num_seconds: int = 3600,
     delta_time: int = 5,
     seed: int = 42,
+    attack_type: str = "random",
+    z_threshold: float = 3.0,
+    std_floor: float = 1e-6,
+    eval_seed: int = 100_000,
+    route_file: str = None,
+    tag: str = "",
+    min_deviation: float = 0.0,
+    persistence: int = 1,
+    scenarios=SCENARIOS,
+    detector: str = "zscore",
+    residual_threshold: float = 5.0,
+    spike_rollback: bool = False,
 ) -> Dict[str, Dict[str, object]]:
     """
     Run all five security scenarios sequentially and save per-scenario episode CSVs.
@@ -233,25 +274,36 @@ def run_all_scenarios(
     Returns:
         scenario name -> run_single_scenario output
     """
-    os.makedirs(RESULTS_DIR, exist_ok=True)
+    out_dir = os.path.join(RESULTS_DIR, attack_type + tag)
+    os.makedirs(out_dir, exist_ok=True)
 
     # Bootstrap environment for model initialization/loading dimensions.
+    routes = {'route_file': route_file} if route_file else {}
     bootstrap_env = SupervisorSumoEnvironment(
         use_gui=False,
         num_seconds=num_seconds,
         delta_time=delta_time,
+        **routes,
     )
     agents, supervisor_a, supervisor_b = load_trained_system(bootstrap_env)
 
     all_results: Dict[str, Dict[str, object]] = {}
 
-    for scenario in tqdm(SCENARIOS, desc="Running scenarios"):
+    for scenario in tqdm(scenarios, desc="Running scenarios"):
+        # Same SUMO seed per episode index in every scenario (common random numbers),
+        # so scenarios can be compared episode-by-episode with a paired test.
         env = SupervisorSumoEnvironment(
             use_gui=use_gui,
             num_seconds=num_seconds,
             delta_time=delta_time,
+            seed=eval_seed,       # the shared test seeds, so 'baseline' matches the Phase 2 evaluation
+            **routes,
         )
-        security = _build_security_layer(mode=scenario, seed=seed)
+        security = _build_security_layer(mode=scenario, seed=seed, attack_type=attack_type,
+                                         z_threshold=z_threshold, std_floor=std_floor,
+                                         min_deviation=min_deviation, persistence=persistence,
+                                         detector=detector, residual_threshold=residual_threshold,
+                                         spike_rollback=spike_rollback)
 
         try:
             result = run_single_scenario(
@@ -266,7 +318,7 @@ def run_all_scenarios(
             env.close()
 
         df = pd.DataFrame(result["episode_rows"])
-        out_path = os.path.join(RESULTS_DIR, f"{scenario}_results.csv")
+        out_path = os.path.join(out_dir, f"{scenario}_results.csv")
         df.to_csv(out_path, index=False)
 
         all_results[scenario] = result
@@ -278,10 +330,30 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run all security scenarios sequentially")
     parser.add_argument("--episodes", type=int, default=20, help="Episodes per scenario")
     parser.add_argument("--gui", action="store_true", help="Run SUMO with GUI")
-    parser.add_argument("--num-seconds", type=int, default=1800, help="Episode duration")
+    parser.add_argument("--num-seconds", type=int, default=3600, help="Episode duration")
     parser.add_argument("--delta-time", type=int, default=5, help="Decision interval")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--attack-type", default="random",
+                        choices=["random", "detector_aware", "ramp", "replay", "hide"])
+    parser.add_argument("--z-threshold", type=float, default=3.0)
+    parser.add_argument("--std-floor", type=float, default=1e-6,
+                        help="Minimum std in the z-score (1e-6 = original detector)")
+    parser.add_argument("--eval-seed", type=int, default=100_000, help="SUMO seed of the first episode")
+    parser.add_argument("--route-file", default=None, help="Route file (default: grid8 calibrated)")
+    parser.add_argument("--tag", default="", help="Suffix for the output folder, e.g. _floor1")
+    parser.add_argument("--min-deviation", type=float, default=0.0,
+                        help="Detector also needs |value - window mean| >= this many vehicles (0 = original)")
+    parser.add_argument("--persistence", type=int, default=1,
+                        help="Correct a lane after this many flagged steps in a row (1 = original)")
+    parser.add_argument("--scenarios", nargs="+", default=SCENARIOS, choices=SCENARIOS)
+    parser.add_argument("--detector", default="zscore", choices=["zscore", "residual"],
+                        help="zscore = original window z-score; residual = |reading - LSTM forecast|")
+    parser.add_argument("--residual-threshold", type=float, default=5.0,
+                        help="Vehicles between reading and LSTM forecast that count as an alarm")
+    parser.add_argument("--spike-rollback", action="store_true",
+                        help="Residual detector: erase one-step spikes from the detector history")
     args = parser.parse_args()
+    out_dir = os.path.join(RESULTS_DIR, args.attack_type + args.tag)
 
     results = run_all_scenarios(
         episodes=args.episodes,
@@ -289,12 +361,24 @@ def main() -> None:
         num_seconds=args.num_seconds,
         delta_time=args.delta_time,
         seed=args.seed,
+        attack_type=args.attack_type,
+        z_threshold=args.z_threshold,
+        std_floor=args.std_floor,
+        eval_seed=args.eval_seed,
+        route_file=args.route_file,
+        tag=args.tag,
+        min_deviation=args.min_deviation,
+        persistence=args.persistence,
+        scenarios=args.scenarios,
+        detector=args.detector,
+        residual_threshold=args.residual_threshold,
+        spike_rollback=args.spike_rollback,
     )
 
     summary_rows = []
     print("\nPer-scenario run complete. Saved files:")
-    for scenario in SCENARIOS:
-        print(f"  {os.path.join(RESULTS_DIR, f'{scenario}_results.csv')}")
+    for scenario in args.scenarios:
+        print(f"  {os.path.join(out_dir, f'{scenario}_results.csv')}")
         summary = results[scenario]["summary"]
         print(
             f"    avg_network_reward={summary['avg_network_reward']:.3f}, "
@@ -309,7 +393,7 @@ def main() -> None:
 
     # Save master summary table
     summary_df = pd.DataFrame(summary_rows)
-    comparison_path = os.path.join(RESULTS_DIR, "scenario_comparison.csv")
+    comparison_path = os.path.join(out_dir, "scenario_comparison.csv")
     summary_df.to_csv(comparison_path, index=False)
     print(f"\n=> Master comparison saved to {comparison_path}")
 

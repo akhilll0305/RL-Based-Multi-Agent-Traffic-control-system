@@ -168,12 +168,13 @@ def train(env, agents, supervisor_a, supervisor_b,
 
         # Initial supervisor signals
         signals_a = supervisor_a.get_signals(
-            {tls: local_states[tls] for tls in env.group_a})
+            {tls: local_states[tls] for tls in env.group_a}, training=True)
         signals_b = supervisor_b.get_signals(
-            {tls: local_states[tls] for tls in env.group_b})
+            {tls: local_states[tls] for tls in env.group_b}, training=True)
 
         enhanced_states = env.build_enhanced_states(
             local_states, signals_a, signals_b)                   # {tls: 7-dim}
+        options_a, options_b = supervisor_a.last_options, supervisor_b.last_options
 
         ep_reward = {tls: 0.0 for tls in env.tls_ids}
         sup_losses_a, sup_losses_b = [], []
@@ -192,12 +193,13 @@ def train(env, agents, supervisor_a, supervisor_b,
 
             # 3. Next supervisor signals
             next_signals_a = supervisor_a.get_signals(
-                {tls: next_local_states[tls] for tls in env.group_a})
+                {tls: next_local_states[tls] for tls in env.group_a}, training=True)
             next_signals_b = supervisor_b.get_signals(
-                {tls: next_local_states[tls] for tls in env.group_b})
+                {tls: next_local_states[tls] for tls in env.group_b}, training=True)
 
             next_enhanced = env.build_enhanced_states(
                 next_local_states, next_signals_a, next_signals_b)
+            next_options_a, next_options_b = supervisor_a.last_options, supervisor_b.last_options
 
             # 4. Group average rewards (for supervisors)
             group_a_reward = env.get_group_avg_reward(rewards, env.group_a)
@@ -217,7 +219,8 @@ def train(env, agents, supervisor_a, supervisor_b,
                 {tls: local_states[tls]      for tls in env.group_a},
                 group_a_reward,
                 {tls: next_local_states[tls] for tls in env.group_a},
-                done
+                done,
+                options=options_a
             )
             loss_a = supervisor_a.train()
             if loss_a is not None:
@@ -227,7 +230,8 @@ def train(env, agents, supervisor_a, supervisor_b,
                 {tls: local_states[tls]      for tls in env.group_b},
                 group_b_reward,
                 {tls: next_local_states[tls] for tls in env.group_b},
-                done
+                done,
+                options=options_b
             )
             loss_b = supervisor_b.train()
             if loss_b is not None:
@@ -236,6 +240,7 @@ def train(env, agents, supervisor_a, supervisor_b,
             # 7. Advance state
             local_states   = next_local_states
             enhanced_states = next_enhanced
+            options_a, options_b = next_options_a, next_options_b
 
         # ── Post-episode updates ───────────────────────────────────
         if (episode + 1) % target_update_freq == 0:
@@ -268,6 +273,7 @@ def train(env, agents, supervisor_a, supervisor_b,
             supervisor_b.save(f'{CHECKPOINT_DIR_SUPERVISORS}/supervisor_b_episode_{actual_ep}.pth')
             print(f"\n  ✓ Checkpoint saved at episode {actual_ep}")
 
+    env.save_episode_log(f'{RESULTS_DIR}/training_trips.csv')   # trip metrics, one row per episode
     env.close()
 
     # ── Save final models ──────────────────────────────────────────
@@ -341,6 +347,7 @@ def evaluate(env, agents, supervisor_a, supervisor_b, num_episodes=20):
         group_a_rewards.append(sum(ep_reward[t] for t in env.group_a))
         group_b_rewards.append(sum(ep_reward[t] for t in env.group_b))
 
+    env.save_episode_log(f'{RESULTS_DIR}/eval_trips.csv')   # trip metrics, one row per episode
     env.close()
 
     # ── Print results ───────────────────────────────────────────
@@ -358,12 +365,7 @@ def evaluate(env, agents, supervisor_a, supervisor_b, num_episodes=20):
     print(f"Group B Avg/intersection : {np.mean(group_b_rewards)/4:.1f}")
     print(f"Network Total            : {np.mean(network_rewards):.1f} ± {np.std(network_rewards):.1f}")
     print(f"Avg per Intersection     : {np.mean(network_rewards)/8:.1f}")
-    print(f"Avg Waiting Time         : {np.mean(wait_times):.3f}s")
-    print(f"\n  8-Intersection Baseline : ~-197 avg/intersection")
-    diff = np.mean(network_rewards)/8 - (-197)
-    pct  = diff / 197 * 100
-    direction = "↑ better" if diff > 0 else "↓ worse"
-    print(f"  Supervisor vs Baseline  : {diff:+.1f} ({pct:+.1f}%) {direction}")
+    env.print_trip_summary(f'{RESULTS_DIR}/eval_trips.csv')
     print("=" * 70)
 
     # ── Save CSV ─────────────────────────────────────────────────
@@ -406,6 +408,8 @@ def main(args):
         use_gui     = args.gui,
         num_seconds = args.num_seconds,
         delta_time  = args.delta_time,
+        seed        = args.seed,      # SUMO seed seed+k for episode k (eval seeds start at 100000)
+        **({'route_file': args.route_file} if args.route_file else {})
     )
     print(f"\n  Episode duration : {args.num_seconds}s")
     print(f"  Delta-time       : {args.delta_time}s")
@@ -489,7 +493,8 @@ def main(args):
 
     if args.mode in ('evaluate', 'all'):
         env2 = SupervisorSumoEnvironment(
-            use_gui=args.gui, num_seconds=args.num_seconds, delta_time=args.delta_time)
+            use_gui=args.gui, num_seconds=args.num_seconds, delta_time=args.delta_time,
+            seed=100_000, **({'route_file': args.route_file} if args.route_file else {}))
         evaluate(env2, agents, supervisor_a, supervisor_b, args.eval_episodes)
 
     print("\n" + "=" * 70)
@@ -515,9 +520,11 @@ if __name__ == '__main__':
     parser.add_argument('--load-final',    action='store_true')
     parser.add_argument('--from-scratch',  action='store_true')
     parser.add_argument('--gui',           action='store_true')
-    parser.add_argument('--num-seconds',   type=int,   default=1800)
+    parser.add_argument('--num-seconds',   type=int,   default=3600)
     parser.add_argument('--delta-time',    type=int,   default=5)
     parser.add_argument('--seed',          type=int,   default=42)
+    parser.add_argument('--route-file',    default=None,
+                        help='Route file (default: sumo_files/grid8/calibrated.rou.xml)')
 
     args = parser.parse_args()
     main(args)

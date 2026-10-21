@@ -19,14 +19,19 @@ import traci
 import numpy as np
 import os
 
+from traffic_rl.envs.common import (SumoEpisodeMixin, DIRECTIONS, MIN_SWITCH_S, switch_due,
+                                    queue_feature, time_feature)
 
-class SupervisorSumoEnvironment:
+
+class SupervisorSumoEnvironment(SumoEpisodeMixin):
     def __init__(self,
                  net_file='sumo_files/grid8/network.net.xml',
-                 route_file='sumo_files/grid8/network.rou.xml',
+                 route_file='sumo_files/grid8/calibrated.rou.xml',
                  use_gui=False,
                  num_seconds=3600,
-                 delta_time=5):
+                 delta_time=5,
+                 seed=None,
+                 reward_mode='queue'):
         """
         8-Intersection environment designed to work with SupervisorAgent.
 
@@ -42,6 +47,7 @@ class SupervisorSumoEnvironment:
         self.use_gui     = use_gui
         self.num_seconds = num_seconds
         self.delta_time  = delta_time
+        self.reward_mode = reward_mode  # 'queue' (default) or 'original' (-queue - 0.5*wait)
         self.sumo_running = False
 
         # ── TLS IDs ────────────────────────────────────────────────
@@ -88,46 +94,23 @@ class SupervisorSumoEnvironment:
         self.current_phases         = {tls: 0   for tls in self.tls_ids}
         self.time_since_last_change = {tls: 0   for tls in self.tls_ids}
         self.simulation_step        = 0
+        # seed=None: fresh random traffic each episode; int: episode k uses seed+k
+        self.sumocfg = "sumo_files/grid8/network.sumocfg"
+        self._init_episode_plumbing(
+            seed, {tls: [self.edges[tls][d] for d in DIRECTIONS] for tls in self.tls_ids})
+
     # ──────────────────────────────────────────────────────────────
     # SUMO lifecycle
     # ──────────────────────────────────────────────────────────────
-    def start_sumo(self):
-        """Start SUMO simulation with randomised traffic."""
-        sumo_binary = "sumo-gui" if self.use_gui else "sumo"
-        sumo_cmd = [
-            sumo_binary,
-            "-c", "sumo_files/grid8/network.sumocfg",
-            "--no-step-log",         "true",
-            "--waiting-time-memory", "10000",
-            "--time-to-teleport",    "-1",
-            "--no-warnings",         "true",
-            "--random",             # randomise vehicle spawns each episode
-        ]
-        traci.start(sumo_cmd)
-        self.sumo_running = True
-
     def reset(self):
         """Reset environment for a new episode. Returns local states (6-dim each)."""
-        if self.sumo_running:
-            traci.close()
-            self.sumo_running = False
-
-        self.start_sumo()
+        self._start_episode()
         self.current_phases         = {tls: 0   for tls in self.tls_ids}
         self.time_since_last_change = {tls: 0   for tls in self.tls_ids}
         self.simulation_step        = 0
-        for tls in self.tls_ids:
-            traci.trafficlight.setPhase(tls, 0)
-        for _ in range(self.delta_time):
-            traci.simulationStep()
+        self._advance(self.delta_time)
 
         return self._get_all_local_states()   # 6-dim per agent
-
-    def close(self):
-        """Close SUMO simulation."""
-        if self.sumo_running:
-            traci.close()
-            self.sumo_running = False
 
     # ──────────────────────────────────────────────────────────────
     # Step
@@ -147,15 +130,14 @@ class SupervisorSumoEnvironment:
         """
         # Apply phase changes
         for tls, action in actions.items():
-            if action == 1 and self.time_since_last_change[tls] >= 5:
+            if switch_due(action, self.time_since_last_change[tls]):   # forced after max green
                 self.current_phases[tls] = 1 - self.current_phases[tls]
-                traci.trafficlight.setPhase(tls, self.phases[self.current_phases[tls]])
+                self.signals.switch(tls, self.current_phases[tls])
                 self.time_since_last_change[tls] = 0
 
         # Advance simulation
-        for _ in range(self.delta_time):
-            traci.simulationStep()
-            self.simulation_step += 1
+        self._advance(self.delta_time)
+        self.simulation_step += self.delta_time
 
         for tls in self.tls_ids:
             self.time_since_last_change[tls] += self.delta_time
@@ -163,7 +145,7 @@ class SupervisorSumoEnvironment:
         local_states = self._get_all_local_states()
         rewards      = self._calculate_all_rewards(actions)
         done         = self.simulation_step >= self.num_seconds
-        info         = self._get_metrics()
+        info         = self._get_metrics() if done else {}   # per-vehicle sums are costly
 
         return local_states, rewards, done, info
 
@@ -181,12 +163,12 @@ class SupervisorSumoEnvironment:
         queues = []
         for direction in ['north', 'south', 'east', 'west']:
             edge  = self.edges[tls_id][direction]
-            queue = traci.edge.getLastStepHaltingNumber(edge)
-            queues.append(min(queue, 20))
+            queue = self._queue(edge)
+            queues.append(queue_feature(queue))   # log1p, no cap
 
         state = queues + [
             self.current_phases[tls_id],
-            min(self.time_since_last_change[tls_id], 60)
+            time_feature(self.time_since_last_change[tls_id])
         ]
         return np.array(state, dtype=np.float32)
 
@@ -211,7 +193,8 @@ class SupervisorSumoEnvironment:
                [avg_queue, max_queue, avg_waiting_time, boundary_queue]
         """
         # Queue info from local states (index 0-3 are the 4 direction queues)
-        group_queues = [local_states_dict[tls][:4].sum() for tls in group_tls_ids]
+        # local states hold log1p(queue); expm1 gives the car counts back
+        group_queues = [np.expm1(local_states_dict[tls][:4]).sum() for tls in group_tls_ids]
         avg_queue    = np.mean(group_queues)
         max_queue    = np.max(group_queues)
 
@@ -230,7 +213,7 @@ class SupervisorSumoEnvironment:
         avg_wait_time = total_wait / max(vehicle_count, 1)
 
         # Boundary queue (only the agents facing the other group)
-        boundary_queue = sum(local_states_dict[tls][:4].sum() for tls in boundary_tls_ids)
+        boundary_queue = sum(np.expm1(local_states_dict[tls][:4]).sum() for tls in boundary_tls_ids)
 
         return np.array([avg_queue, max_queue, avg_wait_time, boundary_queue], dtype=np.float32)
 
@@ -260,26 +243,29 @@ class SupervisorSumoEnvironment:
     def _calculate_reward(self, tls_id, action):
         """
         Individual reward for one intersection.
-        reward = -(queue) - 0.5 × (waiting_time) - 10 × quick_switch_penalty
+        reward = -(queue) [- 0.5 × (waiting_time) if reward_mode='original'] - 10 × quick_switch_penalty
         """
         total_queue = sum(
-            traci.edge.getLastStepHaltingNumber(self.edges[tls_id][d])
+            self._queue(self.edges[tls_id][d])
             for d in ['north', 'south', 'east', 'west']
         )
 
-        total_waiting = 0.0
-        for direction in ['north', 'south', 'east', 'west']:
-            edge = self.edges[tls_id][direction]
-            for vid in traci.edge.getLastStepVehicleIDs(edge):
-                try:
-                    total_waiting += traci.vehicle.getWaitingTime(vid)
-                except Exception:
-                    pass
-
-        reward = -total_queue - 0.5 * total_waiting
+        if self.reward_mode == 'queue':
+            reward = -total_queue
+        else:
+            # (only the original reward needs the per-vehicle waiting times)
+            total_waiting = 0.0
+            for direction in ['north', 'south', 'east', 'west']:
+                edge = self.edges[tls_id][direction]
+                for vid in traci.edge.getLastStepVehicleIDs(edge):
+                    try:
+                        total_waiting += traci.vehicle.getWaitingTime(vid)
+                    except Exception:
+                        pass
+            reward = -total_queue - 0.5 * total_waiting
 
         # Penalise switching too quickly
-        if action == 1 and self.time_since_last_change[tls_id] < 5:
+        if action == 1 and self.time_since_last_change[tls_id] < MIN_SWITCH_S:
             reward -= 10
 
         return reward
@@ -324,7 +310,7 @@ class SupervisorSumoEnvironment:
 
         for tls in self.tls_ids:
             tq = sum(
-                traci.edge.getLastStepHaltingNumber(self.edges[tls][d])
+                self._queue(self.edges[tls][d])
                 for d in ['north', 'south', 'east', 'west']
             )
             metrics['per_intersection'][tls] = {

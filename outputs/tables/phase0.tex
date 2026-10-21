@@ -1,0 +1,10 @@
+\begin{tabular}{lcccccc}
+\toprule
+Row & mean time in system all & mean travel time & mean waiting time & throughput veh h & pending insertion & mean queue \\
+\midrule
+Webster & 45.47 $\pm$ 0.40 & 42.78 $\pm$ 0.12 & 4.36 $\pm$ 0.06 & 3375.96 $\pm$ 42.15 & 3.65 $\pm$ 3.59 & 5.08 $\pm$ 0.10 \\
+Fixed-time 30s & 50.90 $\pm$ 0.49$^{*}$ & 48.28 $\pm$ 0.21$^{*}$ & 9.43 $\pm$ 0.17$^{*}$ & 3373.26 $\pm$ 40.91$^{*}$ & 3.60 $\pm$ 3.55 & 9.86 $\pm$ 0.23$^{*}$ \\
+DDQN & 45.58 $\pm$ 0.40$^{*}$ & 42.85 $\pm$ 0.10$^{*}$ & 4.43 $\pm$ 0.10$^{*}$ & 3376.41 $\pm$ 41.85 & 1.75 $\pm$ 3.11$^{*}$ & 5.14 $\pm$ 0.13$^{*}$ \\
+\bottomrule
+\end{tabular}
+% * Holm-corrected paired Wilcoxon p < 0.05 vs. Webster; n per row in the CSV.

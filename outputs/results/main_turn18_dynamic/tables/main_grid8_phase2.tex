@@ -1,0 +1,14 @@
+\begin{tabular}{lcccccc}
+\toprule
+Row & mean time in system all & mean travel time & mean waiting time & throughput veh h & pending insertion & mean queue \\
+\midrule
+Webster & 193.98 $\pm$ 5.10 & 183.91 $\pm$ 3.71 & 21.05 $\pm$ 1.73 & 8702.23 $\pm$ 59.37 & 3.05 $\pm$ 2.35 & 6.69 $\pm$ 0.54 \\
+Fixed-time 30s & 213.06 $\pm$ 3.85$^{*}$ & 203.88 $\pm$ 1.39$^{*}$ & 39.55 $\pm$ 0.81$^{*}$ & 8621.06 $\pm$ 62.40$^{*}$ & 3.10 $\pm$ 2.38 & 12.42 $\pm$ 0.28$^{*}$ \\
+Max-pressure & 196.73 $\pm$ 9.05 & 186.39 $\pm$ 6.25 & 22.47 $\pm$ 3.44 & 8693.23 $\pm$ 59.26 & 0.80 $\pm$ 1.54$^{*}$ & 7.13 $\pm$ 1.07 \\
+DDQN grouped cooperative & 188.90 $\pm$ 5.00$^{*}$ & 178.36 $\pm$ 2.55$^{*}$ & 18.38 $\pm$ 1.44$^{*}$ & 8696.82 $\pm$ 63.01$^{*}$ & 0.85 $\pm$ 1.57$^{*}$ & 5.89 $\pm$ 0.46$^{*}$ \\
+DDQN grouped coop +300 ep & 192.67 $\pm$ 5.19 & 182.56 $\pm$ 3.48 & 19.53 $\pm$ 1.27$^{*}$ & 8695.52 $\pm$ 60.42$^{*}$ & 0.80 $\pm$ 1.32$^{*}$ & 6.24 $\pm$ 0.41$^{*}$ \\
+Local supervisors & 190.81 $\pm$ 4.80$^{*}$ & 180.57 $\pm$ 3.23$^{*}$ & 18.06 $\pm$ 1.11$^{*}$ & 8694.52 $\pm$ 60.23$^{*}$ & 0.75 $\pm$ 1.37$^{*}$ & 5.81 $\pm$ 0.36$^{*}$ \\
+Global supervisors & 184.98 $\pm$ 3.71$^{*}$ & 174.27 $\pm$ 1.25$^{*}$ & 15.41 $\pm$ 0.53$^{*}$ & 8696.77 $\pm$ 58.93$^{*}$ & 0.90 $\pm$ 1.77$^{*}$ & 4.99 $\pm$ 0.17$^{*}$ \\
+\bottomrule
+\end{tabular}
+% * Holm-corrected paired Wilcoxon p < 0.05 vs. Webster; n per row in the CSV.

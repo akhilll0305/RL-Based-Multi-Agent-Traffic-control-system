@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+
+    
+    <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5.0" minGap="2.5" maxSpeed="50.0" guiShape="passenger" />
+
+    
+    <flow id="north_south_p1" type="car" begin="0" end="900" probability="0.34125" from="north_in" to="south_out" />
+    <flow id="south_north_p1" type="car" begin="0" end="900" probability="0.34125" from="south_in" to="north_out" />
+
+    
+    <flow id="east_west_p1" type="car" begin="0" end="900" probability="0.14700" from="east_in" to="west_out" />
+    <flow id="west_east_p1" type="car" begin="0" end="900" probability="0.14700" from="west_in" to="east_out" />
+
+<flow id="north_south_p2" type="car" begin="900" end="1800" probability="0.28875" from="north_in" to="south_out" />
+    <flow id="south_north_p2" type="car" begin="900" end="1800" probability="0.28875" from="south_in" to="north_out" />
+
+    
+    <flow id="east_west_p2" type="car" begin="900" end="1800" probability="0.23100" from="east_in" to="west_out" />
+    <flow id="west_east_p2" type="car" begin="900" end="1800" probability="0.23100" from="west_in" to="east_out" />
+
+<flow id="north_south_p3" type="car" begin="1800" end="2700" probability="0.18375" from="north_in" to="south_out" />
+    <flow id="south_north_p3" type="car" begin="1800" end="2700" probability="0.18375" from="south_in" to="north_out" />
+
+    
+    <flow id="east_west_p3" type="car" begin="1800" end="2700" probability="0.27300" from="east_in" to="west_out" />
+    <flow id="west_east_p3" type="car" begin="1800" end="2700" probability="0.27300" from="west_in" to="east_out" />
+
+<flow id="north_south_p4" type="car" begin="2700" end="3600" probability="0.23625" from="north_in" to="south_out" />
+    <flow id="south_north_p4" type="car" begin="2700" end="3600" probability="0.23625" from="south_in" to="north_out" />
+
+    
+    <flow id="east_west_p4" type="car" begin="2700" end="3600" probability="0.18900" from="east_in" to="west_out" />
+    <flow id="west_east_p4" type="car" begin="2700" end="3600" probability="0.18900" from="west_in" to="east_out" />
+
+</routes>

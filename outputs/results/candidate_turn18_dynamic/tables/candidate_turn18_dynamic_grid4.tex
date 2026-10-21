@@ -1,0 +1,12 @@
+\begin{tabular}{lcccccc}
+\toprule
+Row & mean time in system all & mean travel time & mean waiting time & throughput veh h & pending insertion & mean queue \\
+\midrule
+Webster & 156.98 $\pm$ 7.49 & 151.11 $\pm$ 5.57 & 15.72 $\pm$ 2.45 & 5040.60 $\pm$ 60.44 & 1.40 $\pm$ 1.64 & 5.85 $\pm$ 0.86 \\
+Fixed-time 30s & 167.77 $\pm$ 4.31$^{*}$ & 162.37 $\pm$ 1.33$^{*}$ & 27.64 $\pm$ 0.95$^{*}$ & 5010.16 $\pm$ 62.19$^{*}$ & 1.40 $\pm$ 1.64 & 10.11 $\pm$ 0.36$^{*}$ \\
+Max-pressure & 169.96 $\pm$ 22.60$^{*}$ & 164.41 $\pm$ 19.71$^{*}$ & 22.68 $\pm$ 9.98$^{*}$ & 5039.20 $\pm$ 58.18 & 0.45 $\pm$ 1.19$^{*}$ & 8.27 $\pm$ 3.50$^{*}$ \\
+DDQN independent & 152.82 $\pm$ 7.33$^{*}$ & 146.73 $\pm$ 4.32$^{*}$ & 13.47 $\pm$ 1.65$^{*}$ & 5037.40 $\pm$ 62.11 & 0.45 $\pm$ 1.19$^{*}$ & 5.06 $\pm$ 0.58$^{*}$ \\
+DDQN cooperative & 154.43 $\pm$ 7.89$^{*}$ & 148.39 $\pm$ 5.15$^{*}$ & 14.46 $\pm$ 1.96$^{*}$ & 5035.41 $\pm$ 61.18$^{*}$ & 0.45 $\pm$ 1.19$^{*}$ & 5.41 $\pm$ 0.69$^{*}$ \\
+\bottomrule
+\end{tabular}
+% * Holm-corrected paired Wilcoxon p < 0.05 vs. Webster; n per row in the CSV.

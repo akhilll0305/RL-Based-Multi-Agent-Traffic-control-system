@@ -7,15 +7,22 @@ import traci
 import numpy as np
 import os
 
+from traffic_rl.envs.common import (SumoEpisodeMixin, DIRECTIONS, MIN_SWITCH_S, switch_due,
+                                    queue_feature, time_feature)
 
-class MultiAgentSumoEnvironment:
+
+class MultiAgentSumoEnvironment(SumoEpisodeMixin):
     def __init__(self, 
                  net_file='sumo_files/grid4/multiagent.net.xml',
-                 route_file='sumo_files/grid4/multiagent.rou.xml',
+                 route_file='sumo_files/grid4/calibrated.rou.xml',
                  use_gui=False,
                  num_seconds=3600,
                  delta_time=5,
-                 cooperative=False):
+                 cooperative=False,
+                 seed=None,
+                 reward_mode='queue',
+                 neighbor_timing=False,
+                 cycle_clock_s=None):
         """
         Multi-Agent SUMO Environment for 4 Intersections
         
@@ -26,13 +33,20 @@ class MultiAgentSumoEnvironment:
             num_seconds: Episode duration in seconds
             delta_time: Seconds between RL agent decisions
             cooperative: If True, agents share observations (neighbor queues)
+            neighbor_timing: cooperative only; also give each agent its neighbours' phase and
+                time since their last switch, so agents can learn to coordinate switching
+            cycle_clock_s: if set, every agent also sees sin/cos of (sim time mod this cycle):
+                a shared background-cycle clock, as in coordinated-actuated control
         """
         self.net_file = net_file
+        self.reward_mode = reward_mode  # 'queue' (default) or 'original' (-queue - 0.5*wait)
         self.route_file = route_file
         self.use_gui = use_gui
         self.num_seconds = num_seconds
         self.delta_time = delta_time
         self.cooperative = cooperative
+        self.neighbor_timing = neighbor_timing and cooperative
+        self.cycle_clock_s = cycle_clock_s
         self.sumo_cmd = None
         self.sumo_running = False
         
@@ -91,29 +105,14 @@ class MultiAgentSumoEnvironment:
         self.total_waiting_time = {tls: 0 for tls in self.tls_ids}
         self.vehicles_passed = {tls: 0 for tls in self.tls_ids}
     
-    def start_sumo(self):
-        """Start SUMO simulation"""
-        sumo_binary = "sumo-gui" if self.use_gui else "sumo"
-        self.sumo_cmd = [
-            sumo_binary,
-            "-c", "sumo_files/grid4/multiagent.sumocfg",
-            "--no-step-log", "true",
-            "--waiting-time-memory", "10000",
-            "--time-to-teleport", "-1",
-            "--no-warnings", "true"
-        ]
-        traci.start(self.sumo_cmd)
-        self.sumo_running = True
+        # seed=None: fresh random traffic each episode; int: episode k uses seed+k
+        self.sumocfg = "sumo_files/grid4/multiagent.sumocfg"
+        self._init_episode_plumbing(
+            seed, {tls: [self.edges[tls][d] for d in DIRECTIONS] for tls in self.tls_ids})
     
     def reset(self):
         """Reset environment for new episode"""
-        # Close existing SUMO instance if running
-        if self.sumo_running:
-            traci.close()
-            self.sumo_running = False
-        
-        # Start new SUMO simulation
-        self.start_sumo()
+        self._start_episode()   # closes and summarises the previous episode
         
         # Reset internal state for all intersections
         self.current_phases = {tls: 0 for tls in self.tls_ids}
@@ -121,14 +120,9 @@ class MultiAgentSumoEnvironment:
         self.simulation_step = 0
         self.total_waiting_time = {tls: 0 for tls in self.tls_ids}
         self.vehicles_passed = {tls: 0 for tls in self.tls_ids}
-        
-        # Set initial traffic light phases for all intersections
-        for tls in self.tls_ids:
-            traci.trafficlight.setPhase(tls, 0)
-        
+
         # Run a few steps to initialize
-        for _ in range(self.delta_time):
-            traci.simulationStep()
+        self._advance(self.delta_time)
         
         # Return states for all 4 agents
         states = self._get_all_states()
@@ -149,16 +143,15 @@ class MultiAgentSumoEnvironment:
         """
         # Apply actions for each intersection
         for tls, action in actions.items():
-            if action == 1 and self.time_since_last_change[tls] >= 5:
-                # Switch phase
+            if switch_due(action, self.time_since_last_change[tls]):
+                # Switch phase (forced after the maximum green)
                 self.current_phases[tls] = 1 - self.current_phases[tls]
-                traci.trafficlight.setPhase(tls, self.phases[self.current_phases[tls]])
+                self.signals.switch(tls, self.current_phases[tls])
                 self.time_since_last_change[tls] = 0
         
         # Simulate for delta_time seconds
-        for _ in range(self.delta_time):
-            traci.simulationStep()
-            self.simulation_step += 1
+        self._advance(self.delta_time)
+        self.simulation_step += self.delta_time
         
         # Update time since last change for all intersections
         for tls in self.tls_ids:
@@ -173,8 +166,8 @@ class MultiAgentSumoEnvironment:
         # Check if episode is done
         done = self.simulation_step >= self.num_seconds
         
-        # Additional info
-        info = self._get_metrics()
+        # Additional info (the per-vehicle sums are costly, so only at the end)
+        info = self._get_metrics() if done else {}
         
         return next_states, rewards, done, info
     
@@ -184,13 +177,13 @@ class MultiAgentSumoEnvironment:
         queues = []
         for direction in ['north', 'south', 'east', 'west']:
             edge = self.edges[tls_id][direction]
-            queue = traci.edge.getLastStepHaltingNumber(edge)
-            queues.append(min(queue, 20))  # Cap at 20
+            queue = self._queue(edge)
+            queues.append(queue_feature(queue))  # log1p, no cap
         
         # Base state: [queue_n, queue_s, queue_e, queue_w, phase, time_since_change]
         state = queues + [
             self.current_phases[tls_id],
-            min(self.time_since_last_change[tls_id], 60)
+            time_feature(self.time_since_last_change[tls_id])
         ]
         
         # If cooperative, add neighbor queue information
@@ -199,12 +192,19 @@ class MultiAgentSumoEnvironment:
             for neighbor_tls in self.neighbors[tls_id]:
                 # Get total queue at neighbor intersection
                 neighbor_total_queue = sum([
-                    traci.edge.getLastStepHaltingNumber(self.edges[neighbor_tls][direction])
+                    self._queue(self.edges[neighbor_tls][direction])
                     for direction in ['north', 'south', 'east', 'west']
                 ])
-                neighbor_queues.append(min(neighbor_total_queue, 40))  # Cap at 40
+                neighbor_queues.append(queue_feature(neighbor_total_queue))
+                if self.neighbor_timing:
+                    neighbor_queues += [self.current_phases[neighbor_tls],
+                                        time_feature(self.time_since_last_change[neighbor_tls])]
             
             state.extend(neighbor_queues)
+
+        if self.cycle_clock_s:
+            a = 2 * np.pi * (self.simulation_step % self.cycle_clock_s) / self.cycle_clock_s
+            state += [np.sin(a), np.cos(a)]
         
         return np.array(state, dtype=np.float32)
     
@@ -216,30 +216,31 @@ class MultiAgentSumoEnvironment:
         """Calculate reward for a single intersection"""
         # Get queue lengths for this intersection
         total_queue = sum([
-            traci.edge.getLastStepHaltingNumber(self.edges[tls_id][direction])
+            self._queue(self.edges[tls_id][direction])
             for direction in ['north', 'south', 'east', 'west']
         ])
         
         # Get waiting times for vehicles at this intersection
         # (Approximate by summing waiting times of vehicles on incoming edges)
-        total_waiting = 0
-        for direction in ['north', 'south', 'east', 'west']:
-            edge = self.edges[tls_id][direction]
-            vehicles_on_edge = traci.edge.getLastStepVehicleIDs(edge)
-            for vid in vehicles_on_edge:
-                try:
-                    total_waiting += traci.vehicle.getWaitingTime(vid)
-                except:
-                    pass
-        
-        # Update cumulative metrics
-        self.total_waiting_time[tls_id] += total_waiting
-        
         # Reward calculation
-        reward = -total_queue - 0.5 * total_waiting
+        if self.reward_mode == 'queue':
+            reward = -total_queue
+        else:
+            # (only the original reward needs the per-vehicle waiting times)
+            total_waiting = 0
+            for direction in ['north', 'south', 'east', 'west']:
+                edge = self.edges[tls_id][direction]
+                vehicles_on_edge = traci.edge.getLastStepVehicleIDs(edge)
+                for vid in vehicles_on_edge:
+                    try:
+                        total_waiting += traci.vehicle.getWaitingTime(vid)
+                    except:
+                        pass
+            self.total_waiting_time[tls_id] += total_waiting
+            reward = -total_queue - 0.5 * total_waiting
         
         # Penalty for switching too quickly
-        if action == 1 and self.time_since_last_change[tls_id] < 5:
+        if action == 1 and self.time_since_last_change[tls_id] < MIN_SWITCH_S:
             reward -= 10
         
         return reward
@@ -273,7 +274,7 @@ class MultiAgentSumoEnvironment:
         # Per-intersection metrics
         for tls in self.tls_ids:
             total_queue = sum([
-                traci.edge.getLastStepHaltingNumber(self.edges[tls][direction])
+                self._queue(self.edges[tls][direction])
                 for direction in ['north', 'south', 'east', 'west']
             ])
             
@@ -285,17 +286,14 @@ class MultiAgentSumoEnvironment:
         
         return metrics
     
-    def close(self):
-        """Close SUMO simulation"""
-        if self.sumo_running:
-            traci.close()
-            self.sumo_running = False
-    
     def get_state_dim(self):
         """Get state dimension (6 for independent, 8 for cooperative with 2 neighbors)"""
+        clock = 2 if self.cycle_clock_s else 0
+        if self.neighbor_timing:
+            return 6 + 2 * 3 + clock  # + per neighbour: total queue, phase, time since switch
         if self.cooperative:
-            return 6 + 2  # Base 6 + 2 neighbor queues
-        return 6
+            return 6 + 2 + clock  # Base 6 + 2 neighbor queues
+        return 6 + clock
     
     def get_action_dim(self):
         """Get action dimension (always 2: keep or switch)"""
